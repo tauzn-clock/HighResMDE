@@ -12,7 +12,6 @@ class BaseImageData(object):
         self.camera_intrinsics = None
         self.pixel_values = None
         self.depth_values = None
-        self.normal_values = None
         self.mask = None
     def to_train(self):
         return 

@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers import Swinv2Config, UperNetConfig, UperNetForSemanticSegmentation
-from newcrf_layers import NewCRFChain
-from BasicUpdateBlockDepth import BasicUpdateBlockDepth
-from DN_to_depth import DN_to_depth
+from layers.newcrf_layers import NewCRFChain
+from layers.BasicUpdateBlockDepth import BasicUpdateBlockDepth
+from layers.DN_to_depth import DN_to_depth
 
 class ModelConfig():
     def __init__(self, version):
@@ -96,7 +96,7 @@ class Model(nn.Module):
         dn_to_depth = DN_to_depth(b, h, w).to(device) # DX: Layer to converts normal + distance to depth
 
         n2 = F.normalize(n2, dim=1, p=2)
-        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized"]).clamp(0, 1)
+        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized_inverted"]).clamp(0, 1)
         u2 = self.uncer_head_2(crf_out_2)
 
         # Iterative refinement

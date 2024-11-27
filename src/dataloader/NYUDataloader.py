@@ -15,32 +15,31 @@ class NYUImageData(BaseImageData):
         
         self.pixel_values = Image.open(os.path.join(root, args[0]))
         self.depth_values = Image.open(os.path.join(root, args[1]))
-        self.normal_values = Image.open(os.path.join(root, args[2]))
-        fx = float(args[3])
-        fy = float(args[4])
-        cx = float(args[5])
-        cy = float(args[6])
+        fx = float(args[2])
+        fy = float(args[3])
+        cx = float(args[4])
+        cy = float(args[5])
 
         self.camera_intrinsics = np.array([[fx, 0, cx, 0],
                                            [0, fy, cy, 0],
                                            [0, 0, 1, 0],
                                            [0, 0, 0, 1]], dtype=np.float32)
         
-        self.camera_intrinsics = np.linalg.inv(self.camera_intrinsics)
+        self.camera_intrinsics_inverted = np.linalg.inv(self.camera_intrinsics)
 
         self.camera_intrinsics_resized = np.array([[fx/4, 0, cx/4, 0 ],
                                                    [0, fy/4, cy/4, 0],
                                                    [0, 0, 1, 0],
                                                    [0, 0, 0, 1]], dtype=np.float32)
-        self.camera_intrinsics_resized = np.linalg.inv(self.camera_intrinsics_resized)
+        self.camera_intrinsics_resized_inverted = np.linalg.inv(self.camera_intrinsics_resized)
 
-        self.depth_rescale = float(args[7])
-        self.depth_max = float(args[8])
+        self.depth_rescale = float(args[6])
+        self.depth_max = float(args[7])
 
         H, W = self.pixel_values.size
 
         mask = np.zeros((W,H), dtype=np.bool)
-        mask[45:471, 41:601] = True
+        mask[10:471, 10:631] = True
 
         # Remove max and min values
         depth_np = np.array(self.depth_values)
@@ -72,18 +71,14 @@ def preprocess_transform(input):
         transforms.ToTensor()
     ])
 
-    normal_transform = transforms.Compose([
-        #transforms.Resize((512, 512)),
-        transforms.ToTensor()
-    ])
-
     output = {}
     output["pixel_values"] = img_transform(input.pixel_values)
     output["depth_values"] = depth_transform(input.depth_values) / input.depth_rescale
     output["mask"] = mask_transform(input.mask)==1
-    output["normal_values"] = normal_transform(input.normal_values)
     output["camera_intrinsics"] = torch.tensor(input.camera_intrinsics)
+    output["camera_intrinsics_inverted"] = torch.tensor(input.camera_intrinsics_inverted)
     output["camera_intrinsics_resized"] = torch.tensor(input.camera_intrinsics_resized)
+    output["camera_intrinsics_resized_inverted"] = torch.tensor(input.camera_intrinsics_resized_inverted)
     output["max_depth"] = input.depth_max
     
     return output
@@ -105,13 +100,11 @@ def train_transform(input):
         input.pixel_values = input.pixel_values.transpose(Image.FLIP_LEFT_RIGHT)
         input.depth_values = input.depth_values.transpose(Image.FLIP_LEFT_RIGHT)
         input.mask = input.mask.transpose(Image.FLIP_LEFT_RIGHT)
-        input.normal_values = input.normal_values.transpose(Image.FLIP_LEFT_RIGHT)
 
     # Rotate
     deg = random.uniform(-5,5)
     input.pixel_values = input.pixel_values.rotate(deg)
     input.depth_values = input.depth_values.rotate(deg)
     input.mask = input.mask.rotate(deg)
-    input.normal_values = input.normal_values.rotate(deg)
 
     return input

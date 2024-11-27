@@ -16,7 +16,8 @@ import torch.multiprocessing as mp
 from model import Model, ModelConfig
 from dataloader.BaseDataloader import BaseImageDataset
 from dataloader.NYUDataloader import NYUImageData
-from DN_to_distance import DN_to_distance
+from layers.DN_to_distance import DN_to_distance
+from layers.depth_to_normal import Depth2Normal
 from loss import silog_loss, get_metrics
 from segmentation import compute_seg, get_smooth_ND
 
@@ -35,11 +36,11 @@ def main(local_rank, world_size):
     
     BATCH_SIZE = 8
 
-    train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_depth_v2/sync', '/NDDepth/src/nyu_train.csv')
+    train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=train_sampler)
 
-    test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_depth_v2/official_splits/test', '/NDDepth/src/nyu_test.csv')
+    test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_test.csv')
     test_sampler = torch.utils.data.DistributedSampler(test_dataset, num_replicas=world_size, rank=local_rank)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=test_sampler)
 
@@ -62,6 +63,8 @@ def main(local_rank, world_size):
         model.train()
         silog_criterion = silog_loss(variance_focus=0.85)
         dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
+        normal_estimation = Depth2Normal()
+
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
         for _, x in enumerate(loop):
             optimizer.zero_grad()
@@ -75,7 +78,7 @@ def main(local_rank, world_size):
             gt = x["depth_values"]
             normal_gt = torch.stack([x["normal_values"][:, 0], x["normal_values"][:, 2], x["normal_values"][:, 1]], 1).to(local_rank)
             normal_gt_norm = F.normalize(normal_gt, dim=1, p=2).to(local_rank)
-            distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics"])
+            distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
 
             # Depth Loss
 
