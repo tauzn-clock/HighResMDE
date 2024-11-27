@@ -76,7 +76,9 @@ def main(local_rank, world_size):
             # Post Processing
 
             gt = x["depth_values"]
-            normal_gt = torch.stack([x["normal_values"][:, 0], x["normal_values"][:, 2], x["normal_values"][:, 1]], 1).to(local_rank)
+            normal_gt_calc, _ = normal_estimation(gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
+            
+            normal_gt = torch.stack([normal_gt_calc[:, 0], normal_gt_calc[:, 2], normal_gt_calc[:, 1]], 1).to(local_rank)
             normal_gt_norm = F.normalize(normal_gt, dim=1, p=2).to(local_rank)
             distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
 
