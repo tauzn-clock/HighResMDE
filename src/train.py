@@ -76,10 +76,13 @@ def main(local_rank, world_size):
             # Post Processing
 
             gt = x["depth_values"]
-            normal_gt_calc, _ = normal_estimation(gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
+            normal_gt_calc, x["mask"] = normal_estimation(gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
             
-            normal_gt = torch.stack([normal_gt_calc[:, 0], normal_gt_calc[:, 2], normal_gt_calc[:, 1]], 1).to(local_rank)
-            normal_gt_norm = F.normalize(normal_gt, dim=1, p=2).to(local_rank)
+            #normal_gt = torch.stack([normal_gt_calc[:, 0], normal_gt_calc[:, 2], normal_gt_calc[:, 1]], 1).to(local_rank)
+            #normal_gt_norm = F.normalize(normal_gt, dim=1, p=2).to(local_rank)
+            #distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
+
+            normal_gt_norm = normal_gt_calc
             distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
 
             # Depth Loss
@@ -107,16 +110,21 @@ def main(local_rank, world_size):
 
             loss_uncer = loss_uncer1 + loss_uncer2
 
+            print("GT Max: ", torch.norm(normal_gt_norm, dim=1, keepdim=True).max())
+            print("GT Norm: ", torch.norm(normal_gt_norm, dim=1, keepdim=True)[x["mask"]].mean())
+            print("Est Max: ", torch.norm(norm_est, dim=1, keepdim=True).max())
+            print("Est Norm: ", torch.norm(norm_est, dim=1, keepdim=True)[x["mask"]].mean())
+
             loss_normal = 5 * ((1 - (normal_gt_norm * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
             loss_distance = 0.25 * torch.abs(distance_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
-            segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
-            loss_grad_normal, loss_grad_distance = get_smooth_ND(norm_est, dist_est, planar_mask)
+            #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
+            #loss_grad_normal, loss_grad_distance = get_smooth_ND(norm_est, dist_est, planar_mask)
 
-            loss_seg = 0.01 * (loss_grad_distance + loss_grad_normal)
+            #loss_seg = 0.01 * (loss_grad_distance + loss_grad_normal)
 
-            loss = loss_depth + loss_uncer + loss_normal + loss_distance + loss_seg
+            loss = loss_depth + loss_uncer + loss_normal + loss_distance #+ loss_seg
             loss = loss.mean()
 
             loss.backward()
@@ -127,7 +135,7 @@ def main(local_rank, world_size):
             custom_message += "Uncer: {:.3g}, ".format(loss_uncer.item())
             custom_message += "Normal: {:.3g}, ".format(loss_normal.item())
             custom_message += "Dist: {:.3g}, ".format(loss_distance.item())
-            custom_message += "Seg: {:.3g}".format(loss_seg.item())
+            #custom_message += "Seg: {:.3g}".format(loss_seg.item())
             loop.set_postfix(message=custom_message)
         # Reduce learning rate
         for param_group in optimizer.param_groups:
