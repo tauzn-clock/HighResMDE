@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/NDDepth/src')
+sys.path.append('/HighResMDE/src')
 
 from PIL import Image
 import torch
@@ -12,6 +12,7 @@ import os
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
+from torchvision import transforms
 
 from model import Model, ModelConfig
 from dataloader.BaseDataloader import BaseImageDataset
@@ -64,63 +65,53 @@ def main(local_rank, world_size):
         silog_criterion = silog_loss(variance_focus=0.85)
         dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
         normal_estimation = Depth2Normal()
+        blur = transforms.GaussianBlur(kernel_size=5)
 
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
-        for _, x in enumerate(loop):
+        for itr, x in enumerate(loop):
             optimizer.zero_grad()
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
 
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
+            
+            print
 
-            # Post Processing
+            # Estimate GT normal and distance
 
-            gt = x["depth_values"] * x["max_depth"].view(-1, 1, 1, 1)
-            normal_gt_calc, x["mask"] = normal_estimation(gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
-
-            # Adds mask if normal estimate vector gets too small
-            gt_norm = torch.norm(normal_gt_norm, dim=1, keepdim=True)
-            x["mask"][gt_norm < 0.8] = 0
-
-            #normal_gt = torch.stack([normal_gt_calc[:, 0], normal_gt_calc[:, 2], normal_gt_calc[:, 1]], 1).to(local_rank)
-            #normal_gt_norm = F.normalize(normal_gt, dim=1, p=2).to(local_rank)
-            #distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
-
-            normal_gt_norm = normal_gt_calc
-            distance_gt = dn_to_distance(gt, normal_gt_norm, x["camera_intrinsics_inverted"])
+            depth_gt = x["depth_values"] * x["max_depth"].view(-1, 1, 1, 1)
+            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
+            normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
+            normal_gt = F.normalize(normal_gt, dim=1, p=2)
+            dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"])
 
             # Depth Loss
 
-            loss_depth1_0 = silog_criterion(d1_list[0], gt, x["mask"])
-            loss_depth2_0 = silog_criterion(d2_list[0], gt, x["mask"])
+            loss_depth1_0 = silog_criterion(d1_list[0], depth_gt, x["mask"])
+            loss_depth2_0 = silog_criterion(d2_list[0], depth_gt, x["mask"])
 
             loss_depth1 = 0
             loss_depth2 = 0
             weights_sum = 0
             for i in range(len(d1_list) - 1):
-                loss_depth1 += (0.85**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], gt, x["mask"])
-                loss_depth2 += (0.85**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], gt, x["mask"])
+                loss_depth1 += (0.85**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], depth_gt, x["mask"])
+                loss_depth2 += (0.85**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += 0.85**(len(d1_list)-i-2)
             
             loss_depth = 10 * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
             # Uncertainty Loss
 
-            uncer1_gt = torch.exp(-5 * torch.abs(gt - d1_list[0].detach()) / (gt + d1_list[0].detach() + 1e-7))
-            uncer2_gt = torch.exp(-5 * torch.abs(gt - d2_list[0].detach()) / (gt + d2_list[0].detach() + 1e-7))
+            uncer1_gt = torch.exp(-5 * torch.abs(depth_gt - d1_list[0].detach()) / (depth_gt + d1_list[0].detach() + 1e-7))
+            uncer2_gt = torch.exp(-5 * torch.abs(depth_gt - d2_list[0].detach()) / (depth_gt + d2_list[0].detach() + 1e-7))
             
             loss_uncer1 = torch.abs(u1-uncer1_gt)[x["mask"]].mean()
             loss_uncer2 = torch.abs(u2-uncer2_gt)[x["mask"]].mean()
 
             loss_uncer = loss_uncer1 + loss_uncer2
 
-            print("GT Max: ", torch.norm(normal_gt_norm, dim=1, keepdim=True).max())
-            print("GT Norm: ", torch.norm(normal_gt_norm, dim=1, keepdim=True)[x["mask"]].mean())
-            print("Est Max: ", torch.norm(norm_est, dim=1, keepdim=True).max())
-            print("Est Norm: ", torch.norm(norm_est, dim=1, keepdim=True)[x["mask"]].mean())
-
-            loss_normal = 5 * ((1 - (normal_gt_norm * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
-            loss_distance = 0.25 * torch.abs(distance_gt- dist_est)[x["mask"]].mean()
+            loss_normal = 5 * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
+            loss_distance = 0.25 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
             #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
