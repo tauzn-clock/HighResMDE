@@ -42,9 +42,9 @@ class NYUImageData(BaseImageData):
         mask[10:471, 10:631] = True
 
         # Remove max and min values
-        depth_np = np.array(self.depth_values)
-        max_min_mask = (depth_np == depth_np.max()) | (depth_np == depth_np.min())
-        mask = mask & ~max_min_mask
+        #depth_np = np.array(self.depth_values)
+        #max_min_mask = (depth_np == depth_np.max()) | (depth_np == depth_np.min())
+        #mask = mask & ~max_min_mask
 
         self.mask = Image.fromarray(mask)
         

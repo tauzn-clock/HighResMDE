@@ -56,6 +56,7 @@ def main(local_rank, world_size):
     config.width = 640//4
     model = Model(config).to(local_rank)
     model.backbone.backbone.from_pretrained("microsoft/swinv2-tiny-patch4-window8-256")
+    #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -75,8 +76,6 @@ def main(local_rank, world_size):
 
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
             
-            print
-
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] * x["max_depth"].view(-1, 1, 1, 1)
@@ -132,6 +131,7 @@ def main(local_rank, world_size):
             custom_message += "Dist: {:.3g}, ".format(loss_distance.item())
             #custom_message += "Seg: {:.3g}".format(loss_seg.item())
             loop.set_postfix(message=custom_message)
+        
         # Reduce learning rate
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.9999
