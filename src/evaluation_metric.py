@@ -46,13 +46,12 @@ tot_metric = [0 for _ in range(METRIC_CNT)]
 cnt = 0
 with torch.no_grad():
     for _, x in enumerate(tqdm.tqdm(test_dataloader)):
-        #if x["pixel_values"].shape[0]!=BATCH_SIZE: break
         for k in x.keys():
             x[k] = x[k].to(local_rank)
             
         d1_list, _, d2_list, _, _, _ = model(x)
         
-        depth_gt = x["depth_values"] * x["max_depth"].view(-1, 1, 1, 1)
+        depth_gt = x["depth_values"] #* x["max_depth"].view(-1, 1, 1, 1)
         d1 = d1_list[-1]
         d2 = d2_list[-1]
         

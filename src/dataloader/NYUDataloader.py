@@ -58,9 +58,10 @@ def preprocess_transform(input):
         #transforms.Resize((512, 512)),         # Resize images to 128x128
         #transforms.RandomRotation(30),         # Randomly rotate images between -30 and 30 degrees
         transforms.ToTensor(),                 # Convert the image to a tensor
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize
+        #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize
     ])
     
+    # Transforms ToTensor does not rescale to [0,1] for uint16
     depth_transform = transforms.Compose([
         #transforms.Resize((512, 512)),
         transforms.ToTensor()
@@ -73,7 +74,7 @@ def preprocess_transform(input):
 
     output = {}
     output["pixel_values"] = img_transform(input.pixel_values)
-    output["depth_values"] = depth_transform(input.depth_values) #* input.depth_max
+    output["depth_values"] = depth_transform(input.depth_values) / input.depth_rescale
     output["mask"] = mask_transform(input.mask)==1
     output["camera_intrinsics"] = torch.tensor(input.camera_intrinsics)
     output["camera_intrinsics_inverted"] = torch.tensor(input.camera_intrinsics_inverted)

@@ -50,7 +50,7 @@ def main(local_rank, world_size):
         writer = csv.writer(file)
         writer.writerows(csv_file)
 
-    config =  ModelConfig("tiny07")
+    config =  ModelConfig("large07")
     config.batch_size = BATCH_SIZE
     config.height = 480//4
     config.width = 640//4
@@ -78,7 +78,7 @@ def main(local_rank, world_size):
             
             # Estimate GT normal and distance
 
-            depth_gt = x["depth_values"] * x["max_depth"].view(-1, 1, 1, 1)
+            depth_gt = x["depth_values"] #* x["max_depth"].view(-1, 1, 1, 1)
             normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
             normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2)
@@ -140,26 +140,27 @@ def main(local_rank, world_size):
         
         model.eval()
         torch.cuda.empty_cache()
-        tot_metric = [0 for _ in range(9)]
+        METRIC_CNT = 9
+        tot_metric = [0 for _ in range(METRIC_CNT)]
         cnt = 0
         with torch.no_grad():
             for _, x in enumerate(tqdm.tqdm(test_dataloader)):
-                #if x["pixel_values"].shape[0]!=BATCH_SIZE: break
                 for k in x.keys():
                     x[k] = x[k].to(local_rank)
                     
                 d1_list, _, d2_list, _, _, _ = model(x)
                 
-                gt = x["depth_values"]
+                depth_gt = x["depth_values"] #* x["max_depth"].view(-1, 1, 1, 1)
                 d1 = d1_list[-1]
                 d2 = d2_list[-1]
                 
-                metric = get_metrics(gt, (d1 + d2)/2, x["mask"])
-                for i in range(9): tot_metric[i] += metric[i].cpu().detach().item()
-                cnt+=1
+                for b in range(x["max_depth"].shape[0]):
+                    metric = get_metrics(depth_gt[b], ((d1 + d2)/2)[b], x["mask"][b])
+                    assert len(metric) == METRIC_CNT
+                    for i in range(METRIC_CNT): tot_metric[i] += metric[i].cpu().detach().item()
+                    cnt+=1
 
-        for i in range(9): tot_metric[i]/=cnt
-        print(tot_metric)
+        for i in range(METRIC_CNT): tot_metric[i]/=cnt
         with open("metric.csv", mode='a', newline='') as file:  # Open in append mode
             writer = csv.writer(file)
             writer.writerow(tot_metric)  # Write the new row only
