@@ -55,7 +55,8 @@ def main(local_rank, world_size):
     config.height = 480//4
     config.width = 640//4
     model = Model(config).to(local_rank)
-    model.backbone.backbone.from_pretrained("microsoft/swinv2-tiny-patch4-window8-256")
+    #model.backbone.backbone.from_pretrained("microsoft/swinv2-tiny-patch4-window8-256")
+    model.backbone.backbone.from_pretrained("microsoft/swinv2-large-patch4-window12-192-22k")
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
