@@ -15,8 +15,8 @@ class NYUImageData(BaseImageData):
         
         self.pixel_values = Image.open(os.path.join(root, args[0]))
         self.depth_values = Image.open(os.path.join(root, args[1]))
-        fx = float(args[2])
-        fy = float(args[3])
+        fx = float(args[2]) /1000 #Unit: m
+        fy = float(args[3]) /1000 #Unit: m
         cx = float(args[4])
         cy = float(args[5])
 
@@ -74,13 +74,13 @@ def preprocess_transform(input):
 
     output = {}
     output["pixel_values"] = img_transform(input.pixel_values)
-    output["depth_values"] = depth_transform(input.depth_values) / input.depth_rescale
+    output["depth_values"] = depth_transform(input.depth_values) / input.depth_rescale # Unit: m
     output["mask"] = mask_transform(input.mask)==1
     output["camera_intrinsics"] = torch.tensor(input.camera_intrinsics)
     output["camera_intrinsics_inverted"] = torch.tensor(input.camera_intrinsics_inverted)
     output["camera_intrinsics_resized"] = torch.tensor(input.camera_intrinsics_resized)
     output["camera_intrinsics_resized_inverted"] = torch.tensor(input.camera_intrinsics_resized_inverted)
-    output["max_depth"] = input.depth_max
+    output["max_depth"] = input.depth_max #Unit: m
     
     return output
 

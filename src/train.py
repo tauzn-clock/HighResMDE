@@ -35,7 +35,7 @@ def init_process_group(local_rank, world_size):
 def main(local_rank, world_size):
     init_process_group(local_rank, world_size)
     
-    BATCH_SIZE = 8
+    BATCH_SIZE = 4
 
     train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
@@ -78,11 +78,11 @@ def main(local_rank, world_size):
             
             # Estimate GT normal and distance
 
-            depth_gt = x["depth_values"] #* x["max_depth"].view(-1, 1, 1, 1)
+            depth_gt = x["depth_values"] #Unit: m
             normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
             normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
-            normal_gt = F.normalize(normal_gt, dim=1, p=2)
-            dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"])
+            normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
+            dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Unit: m
 
             # Depth Loss
 
@@ -134,7 +134,7 @@ def main(local_rank, world_size):
         
         # Reduce learning rate
         for param_group in optimizer.param_groups:
-            param_group['lr'] *= 0.9999
+            param_group['lr'] *= 0.995
         print(param_group['lr'])
         torch.save(model.module.state_dict(), 'model.pth')
         
