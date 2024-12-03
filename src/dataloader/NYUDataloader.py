@@ -4,7 +4,7 @@ from torchvision import transforms
 import numpy as np
 import torch
 import os
-import csv
+import cv2
 import random
 
 from dataloader.BaseDataloader import BaseImageData
@@ -39,7 +39,7 @@ class NYUImageData(BaseImageData):
         H, W = self.pixel_values.size
 
         mask = np.zeros((W,H), dtype=np.bool)
-        mask[10:471, 10:631] = True
+        mask[16:464, 16:624] = True #https://github.com/xapharius/pytorch-nyuv2?tab=readme-ov-file
 
         # Remove max and min values
         #depth_np = np.array(self.depth_values)
@@ -62,9 +62,10 @@ def preprocess_transform(input):
     ])
     
     # Transforms ToTensor does not rescale to [0,1] for uint16
+    # I dont know any easy way to convert PIL depth to tensor
     depth_transform = transforms.Compose([
         #transforms.Resize((512, 512)),
-        transforms.ToTensor()
+        transforms.v2.ToDtype(torch.float32, scale=True),
     ])
     
     mask_transform = transforms.Compose([
@@ -74,12 +75,12 @@ def preprocess_transform(input):
 
     output = {}
     output["pixel_values"] = img_transform(input.pixel_values)
-    output["depth_values"] = depth_transform(input.depth_values) / input.depth_rescale # Unit: m
+    output["depth_values"] = torch.Tensor(np.array(input.depth_values)).unsqueeze(0) / input.depth_rescale # Unit: m
     output["mask"] = mask_transform(input.mask)==1
-    output["camera_intrinsics"] = torch.tensor(input.camera_intrinsics)
-    output["camera_intrinsics_inverted"] = torch.tensor(input.camera_intrinsics_inverted)
-    output["camera_intrinsics_resized"] = torch.tensor(input.camera_intrinsics_resized)
-    output["camera_intrinsics_resized_inverted"] = torch.tensor(input.camera_intrinsics_resized_inverted)
+    output["camera_intrinsics"] = torch.Tensor(input.camera_intrinsics)
+    output["camera_intrinsics_inverted"] = torch.Tensor(input.camera_intrinsics_inverted)
+    output["camera_intrinsics_resized"] = torch.Tensor(input.camera_intrinsics_resized)
+    output["camera_intrinsics_resized_inverted"] = torch.Tensor(input.camera_intrinsics_resized_inverted)
     output["max_depth"] = input.depth_max #Unit: m
     
     return output

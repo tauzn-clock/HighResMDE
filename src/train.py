@@ -60,7 +60,7 @@ def main(local_rank, world_size):
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     for epoch in range(50):
         model.train()
@@ -76,10 +76,13 @@ def main(local_rank, world_size):
                 x[k] = x[k].to(local_rank)
 
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
+
+            #print(d1_list[0].max())
             
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] #Unit: m
+            #print("gt", depth_gt.max())
             normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
             normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
@@ -111,7 +114,7 @@ def main(local_rank, world_size):
             loss_uncer = loss_uncer1 + loss_uncer2
 
             loss_normal = 5 * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
-            loss_distance = 0.25 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
+            loss_distance = 0.25 * 0.01 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
             #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
@@ -135,7 +138,7 @@ def main(local_rank, world_size):
         
         # Reduce learning rate
         for param_group in optimizer.param_groups:
-            param_group['lr'] *= 0.995
+            param_group['lr'] *= 0.95
         print(param_group['lr'])
         torch.save(model.module.state_dict(), 'model.pth')
         
@@ -151,7 +154,7 @@ def main(local_rank, world_size):
                     
                 d1_list, _, d2_list, _, _, _ = model(x)
                 
-                depth_gt = x["depth_values"] #* x["max_depth"].view(-1, 1, 1, 1)
+                depth_gt = x["depth_values"]
                 d1 = d1_list[-1]
                 d2 = d2_list[-1]
                 
