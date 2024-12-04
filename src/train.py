@@ -60,7 +60,7 @@ def main(local_rank, world_size):
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
 
     for epoch in range(50):
         model.train()
