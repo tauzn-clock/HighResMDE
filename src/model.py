@@ -52,10 +52,6 @@ class Model(nn.Module):
         self.config = config
         
         self.backbone = UperNetForSemanticSegmentation(self.config.uper_config)
-        self.backbone.backbone.from_pretrained(self.config.swinv2_pretrained_path)
-        # Freeze the encoder layers only
-        for param in self.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
-            param.requires_grad = False
 
         #self.backbone.eval() # TODO: Necessary to allow evaluation as some layer requies mean??
     

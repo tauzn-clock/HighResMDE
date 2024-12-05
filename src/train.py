@@ -37,7 +37,7 @@ def main(local_rank, world_size):
     
     BATCH_SIZE = 10
     MODEL_SIZE = "tiny07"
-    SWINV2_SPECIFIC_PATH = None
+    SWINV2_SPECIFIC_PATH = "microsoft/swinv2-tiny-patch4-window8-256" #None
     VAR_FOCUS = 0.85
     LR = 1e-4
     LR_DECAY = 0.975
@@ -68,6 +68,10 @@ def main(local_rank, world_size):
     config.width = 640//4
     if not SWINV2_SPECIFIC_PATH is None: config.swinv2_pretrained_path = SWINV2_SPECIFIC_PATH
     model = Model(config).to(local_rank)
+    model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
+    # Freeze the encoder layers only
+    for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+        param.requires_grad = False
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
@@ -85,6 +89,7 @@ def main(local_rank, world_size):
             optimizer.zero_grad()
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
+            if x["depth_values"].shape[0] != BATCH_SIZE: continue # Hacky solution to deal with batch size issue
 
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
 
@@ -111,7 +116,7 @@ def main(local_rank, world_size):
                 loss_depth2 += (VAR_FOCUS**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += VAR_FOCUS**(len(d1_list)-i-2)
             
-            loss_depth = LOSS_DEPTH_WEIGHT * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
+            loss_depth =  ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
             # Uncertainty Loss
 
@@ -121,7 +126,7 @@ def main(local_rank, world_size):
             loss_uncer1 = torch.abs(u1-uncer1_gt)[x["mask"]].mean()
             loss_uncer2 = torch.abs(u2-uncer2_gt)[x["mask"]].mean()
 
-            loss_uncer = LOSS_UNCER_WEIGHT * (loss_uncer1 + loss_uncer2)
+            loss_uncer =  (loss_uncer1 + loss_uncer2)
 
             loss_normal = LOSS_NORMAL_WEIGHT * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
             loss_distance = LOSS_DIST_WEIGHT * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
