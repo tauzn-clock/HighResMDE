@@ -35,11 +35,20 @@ def init_process_group(local_rank, world_size):
 def main(local_rank, world_size):
     init_process_group(local_rank, world_size)
     
-    BATCH_SIZE = 4
+    BATCH_SIZE = 10
     MODEL_SIZE = "tiny07"
     SWINV2_SPECIFIC_PATH = None
     VAR_FOCUS = 0.85
+    LR = 1e-4
+    LR_DECAY = 0.975
 
+    LOSS_DEPTH_WEIGHT = 1
+    LOSS_UNCER_WEIGHT = 1
+    LOSS_NORMAL_WEIGHT = 5
+    LOSS_DIST_WEIGHT = 0.25
+
+    METRIC_CNT = 9
+    
     train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=train_sampler)
@@ -62,7 +71,7 @@ def main(local_rank, world_size):
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     for epoch in range(50):
         model.train()
@@ -102,7 +111,7 @@ def main(local_rank, world_size):
                 loss_depth2 += (VAR_FOCUS**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += VAR_FOCUS**(len(d1_list)-i-2)
             
-            loss_depth = ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
+            loss_depth = LOSS_DEPTH_WEIGHT * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
             # Uncertainty Loss
 
@@ -112,10 +121,10 @@ def main(local_rank, world_size):
             loss_uncer1 = torch.abs(u1-uncer1_gt)[x["mask"]].mean()
             loss_uncer2 = torch.abs(u2-uncer2_gt)[x["mask"]].mean()
 
-            loss_uncer = loss_uncer1 + loss_uncer2
+            loss_uncer = LOSS_UNCER_WEIGHT * (loss_uncer1 + loss_uncer2)
 
-            loss_normal = 5 * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
-            loss_distance = 0.25 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
+            loss_normal = LOSS_NORMAL_WEIGHT * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
+            loss_distance = LOSS_DIST_WEIGHT * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
             #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
@@ -139,13 +148,12 @@ def main(local_rank, world_size):
         
         # Reduce learning rate
         for param_group in optimizer.param_groups:
-            param_group['lr'] *= 0.95
+            param_group['lr'] *= LR_DECAY
         print(param_group['lr'])
         torch.save(model.module.state_dict(), 'model.pth')
         
         model.eval()
         torch.cuda.empty_cache()
-        METRIC_CNT = 9
         tot_metric = [0 for _ in range(METRIC_CNT)]
         cnt = 0
         with torch.no_grad():
