@@ -83,10 +83,13 @@ def main(local_rank, world_size):
 
             depth_gt = x["depth_values"] #Unit: m
             #print("gt", depth_gt.max())
-            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
-            normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
+            x["camera_intrinsics"][:, 0, 0] = x["camera_intrinsics"][:, 0, 0] * 1000
+            x["camera_intrinsics"][:, 1, 1] = x["camera_intrinsics"][:, 1, 1] * 1000
+            normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics"], x["mask"], 1.0) # Intrinsic needs to be in mm, change depth_gt to mm for consistency
+            #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
-            dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Unit: m
+            inverted = torch.linalg.inv(x["camera_intrinsics"])
+            dist_gt = dn_to_distance(depth_gt * 1000, normal_gt, inverted) /1000 #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
             # Depth Loss
 
@@ -165,6 +168,7 @@ def main(local_rank, world_size):
                     cnt+=1
 
         for i in range(METRIC_CNT): tot_metric[i]/=cnt
+        print(tot_metric)
         with open("metric.csv", mode='a', newline='') as file:  # Open in append mode
             writer = csv.writer(file)
             writer.writerow(tot_metric)  # Write the new row only
