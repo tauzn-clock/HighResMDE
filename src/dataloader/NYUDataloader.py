@@ -63,10 +63,10 @@ def preprocess_transform(input):
     
     # Transforms ToTensor does not rescale to [0,1] for uint16
     # I dont know any easy way to convert PIL depth to tensor
-    depth_transform = transforms.Compose([
-        #transforms.Resize((512, 512)),
-        transforms.v2.ToDtype(torch.float32, scale=True),
-    ])
+    #depth_transform = transforms.Compose([
+    #    #transforms.Resize((512, 512)),
+    #    transforms.v2.ToDtype(torch.float32, scale=True),
+    #])
     
     mask_transform = transforms.Compose([
         #transforms.Resize((512, 512)),
