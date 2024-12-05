@@ -20,12 +20,14 @@ class NYUImageData(BaseImageData):
         cx = float(args[4])
         cy = float(args[5])
 
+        """
         self.camera_intrinsics = np.array([[fx, 0, cx, 0],
                                            [0, fy, cy, 0],
                                            [0, 0, 1, 0],
                                            [0, 0, 0, 1]], dtype=np.float32)
         
         self.camera_intrinsics_inverted = np.linalg.inv(self.camera_intrinsics)
+        """
 
         self.camera_intrinsics_resized = np.array([[fx/4, 0, cx/4, 0 ],
                                                    [0, fy/4, cy/4, 0],
@@ -84,8 +86,8 @@ def preprocess_transform(input):
     output["pixel_values"] = img_transform(input.pixel_values)
     output["depth_values"] = torch.Tensor(np.array(input.depth_values)).unsqueeze(0) / input.depth_rescale # Unit: m
     output["mask"] = mask_transform(input.mask)==1
-    output["camera_intrinsics"] = torch.Tensor(input.camera_intrinsics)
-    output["camera_intrinsics_inverted"] = torch.Tensor(input.camera_intrinsics_inverted)
+    #output["camera_intrinsics"] = torch.Tensor(input.camera_intrinsics)
+    #output["camera_intrinsics_inverted"] = torch.Tensor(input.camera_intrinsics_inverted)
     output["camera_intrinsics_resized"] = torch.Tensor(input.camera_intrinsics_resized)
     output["camera_intrinsics_resized_inverted"] = torch.Tensor(input.camera_intrinsics_resized_inverted)
     output["camera_intrinsics_mm"] = torch.Tensor(input.camera_intrinsics_mm)

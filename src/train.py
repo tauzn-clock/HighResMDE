@@ -71,7 +71,6 @@ def main(local_rank, world_size):
 
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
         for itr, x in enumerate(loop):
-            if itr==50: break
             optimizer.zero_grad()
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
