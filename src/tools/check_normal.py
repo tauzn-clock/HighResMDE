@@ -28,14 +28,10 @@ for itr, x in enumerate(loop):
     for k in x.keys():
         x[k] = x[k].to(DEVICE)
     depth_gt = x["depth_values"] #Unit: m
-    #print("gt", depth_gt.max())
-    x["camera_intrinsics"][:, 0, 0] = x["camera_intrinsics"][:, 0, 0] * 1000
-    x["camera_intrinsics"][:, 1, 1] = x["camera_intrinsics"][:, 1, 1] * 1000
-    normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics"], x["mask"], 1.0) # TODO: Figure out what scale does
+    normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics_mm"], x["mask"], 1.0) # TODO: Figure out what scale does
     #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
     normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
-    inverted = torch.linalg.inv(x["camera_intrinsics"])
-    dist_gt = dn_to_distance(depth_gt * 1000, normal_gt, inverted) #Unit: m
+    dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Unit: m
     break
 
 plt.imshow(x["pixel_values"][0].permute(1,2,0).cpu().numpy())

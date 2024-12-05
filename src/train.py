@@ -71,6 +71,7 @@ def main(local_rank, world_size):
 
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
         for itr, x in enumerate(loop):
+            if itr==50: break
             optimizer.zero_grad()
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
@@ -82,15 +83,11 @@ def main(local_rank, world_size):
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] #Unit: m
-            #print("gt", depth_gt.max())
-            x["camera_intrinsics"][:, 0, 0] = x["camera_intrinsics"][:, 0, 0] * 1000
-            x["camera_intrinsics"][:, 1, 1] = x["camera_intrinsics"][:, 1, 1] * 1000
-            normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics"], x["mask"], 1.0) # Intrinsic needs to be in mm, change depth_gt to mm for consistency
+            normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics_mm"], x["mask"], 1.0) # Intrinsic needs to be in mm, change depth_gt to mm for consistency
             #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
-            inverted = torch.linalg.inv(x["camera_intrinsics"])
-            dist_gt = dn_to_distance(depth_gt * 1000, normal_gt, inverted) /1000 #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
-
+            dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
+            
             # Depth Loss
 
             loss_depth1_0 = silog_criterion(d1_list[0], depth_gt, x["mask"])
@@ -117,7 +114,7 @@ def main(local_rank, world_size):
             loss_uncer = loss_uncer1 + loss_uncer2
 
             loss_normal = 5 * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
-            loss_distance = 0.25 * 0.01 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
+            loss_distance = 0.25 * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
             #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
