@@ -76,13 +76,13 @@ def main(local_rank, world_size):
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    silog_criterion = silog_loss(variance_focus=VAR_FOCUS)
+    dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
+    normal_estimation = Depth2Normal()
+    blur = transforms.GaussianBlur(kernel_size=5)
 
     for epoch in range(50):
         model.train()
-        silog_criterion = silog_loss(variance_focus=VAR_FOCUS)
-        dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
-        normal_estimation = Depth2Normal()
-        blur = transforms.GaussianBlur(kernel_size=5)
 
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
         for itr, x in enumerate(loop):
