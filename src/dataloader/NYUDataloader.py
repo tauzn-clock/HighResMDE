@@ -29,18 +29,19 @@ class NYUImageData(BaseImageData):
         self.camera_intrinsics_inverted = np.linalg.inv(self.camera_intrinsics)
         """
 
-        self.camera_intrinsics_resized = np.array([[fx/4, 0, cx/4, 0 ],
+        self.camera_intrinsics_resized = torch.Tensor([[fx/4, 0, cx/4, 0 ],
                                                    [0, fy/4, cy/4, 0],
                                                    [0, 0, 1, 0],
-                                                   [0, 0, 0, 1]], dtype=np.float32)
-        self.camera_intrinsics_resized_inverted = np.linalg.inv(self.camera_intrinsics_resized)
+                                                   [0, 0, 0, 1]])
+        
+        self.camera_intrinsics_resized_inverted = torch.linalg.inv(self.camera_intrinsics_resized)
 
-        self.camera_intrinsics_mm = np.array([[fx*1000, 0, cx, 0],
-                                              [0, fy*1000, cy, 0],
-                                              [0, 0, 1, 0],
-                                              [0, 0, 0, 1]], dtype=np.float32)
+        self.camera_intrinsics_mm = torch.Tensor([[fx*1000, 0, cx, 0],
+                                                  [0, fy*1000, cy, 0],
+                                                  [0, 0, 1, 0],
+                                                  [0, 0, 0, 1]])
 
-        self.camera_intrinsics_mm_inverted = np.linalg.inv(self.camera_intrinsics_mm)
+        self.camera_intrinsics_mm_inverted = torch.linalg.inv(self.camera_intrinsics_mm)
 
         self.depth_rescale = float(args[6])
         self.depth_max = float(args[7])
@@ -88,10 +89,10 @@ def preprocess_transform(input):
     output["mask"] = mask_transform(input.mask)==1
     #output["camera_intrinsics"] = torch.Tensor(input.camera_intrinsics)
     #output["camera_intrinsics_inverted"] = torch.Tensor(input.camera_intrinsics_inverted)
-    output["camera_intrinsics_resized"] = torch.Tensor(input.camera_intrinsics_resized)
-    output["camera_intrinsics_resized_inverted"] = torch.Tensor(input.camera_intrinsics_resized_inverted)
-    output["camera_intrinsics_mm"] = torch.Tensor(input.camera_intrinsics_mm)
-    output["camera_intrinsics_mm_inverted"] = torch.Tensor(input.camera_intrinsics_mm_inverted)
+    #output["camera_intrinsics_resized"] = torch.Tensor(input.camera_intrinsics_resized)
+    output["camera_intrinsics_resized_inverted"] = input.camera_intrinsics_resized_inverted
+    output["camera_intrinsics_mm"] = input.camera_intrinsics_mm
+    output["camera_intrinsics_mm_inverted"] = input.camera_intrinsics_mm_inverted
     output["max_depth"] = input.depth_max #Unit: m
     
     return output
