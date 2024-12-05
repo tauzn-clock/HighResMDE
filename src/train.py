@@ -36,6 +36,9 @@ def main(local_rank, world_size):
     init_process_group(local_rank, world_size)
     
     BATCH_SIZE = 4
+    MODEL_SIZE = "tiny07"
+    SWINV2_SPECIFIC_PATH = None
+    VAR_FOCUS = 0.85
 
     train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
@@ -50,13 +53,12 @@ def main(local_rank, world_size):
         writer = csv.writer(file)
         writer.writerows(csv_file)
 
-    config =  ModelConfig("large07")
+    config =  ModelConfig(MODEL_SIZE)
     config.batch_size = BATCH_SIZE
     config.height = 480//4
     config.width = 640//4
+    if not SWINV2_SPECIFIC_PATH is None: config.swinv2_pretrained_path = SWINV2_SPECIFIC_PATH
     model = Model(config).to(local_rank)
-    #model.backbone.backbone.from_pretrained("microsoft/swinv2-tiny-patch4-window8-256")
-    model.backbone.backbone.from_pretrained("microsoft/swinv2-large-patch4-window12-192-22k")
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
@@ -64,7 +66,7 @@ def main(local_rank, world_size):
 
     for epoch in range(50):
         model.train()
-        silog_criterion = silog_loss(variance_focus=0.85)
+        silog_criterion = silog_loss(variance_focus=VAR_FOCUS)
         dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
         normal_estimation = Depth2Normal()
         blur = transforms.GaussianBlur(kernel_size=5)
@@ -96,9 +98,9 @@ def main(local_rank, world_size):
             loss_depth2 = 0
             weights_sum = 0
             for i in range(len(d1_list) - 1):
-                loss_depth1 += (0.85**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], depth_gt, x["mask"])
-                loss_depth2 += (0.85**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
-                weights_sum += 0.85**(len(d1_list)-i-2)
+                loss_depth1 += (VAR_FOCUS**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], depth_gt, x["mask"])
+                loss_depth2 += (VAR_FOCUS**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
+                weights_sum += VAR_FOCUS**(len(d1_list)-i-2)
             
             loss_depth = ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             

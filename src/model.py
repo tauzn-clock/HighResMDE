@@ -16,21 +16,21 @@ class ModelConfig():
             self.depths = [2, 2, 18, 2]
             self.num_heads = [4, 8, 16, 32]
             self.in_channels = [128, 256, 512, 1024]
+            self.swinv2_pretrained_path = "microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft"
         elif version[:-2] == 'large':
             self.embed_dim = 192
             self.depths = [2, 2, 18, 2]
             self.num_heads = [6, 12, 24, 48]
             self.in_channels = [192, 384, 768, 1536]
+            self.swinv2_pretrained_path = "microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft"
         elif version[:-2] == 'tiny':
             self.embed_dim = 96
             self.depths = [2, 2, 6, 2]
             self.num_heads = [3, 6, 12, 24]
             self.in_channels = [96, 192, 384, 768]
-        elif version[:-2] == 'micro':
-            self.embed_dim = 64
-            self.depths = [2, 2, 4, 2]
-            self.num_heads = [2, 4, 8, 16]
-            self.in_channels = [64, 128, 256, 512]
+            self.swinv2_pretrained_path = "microsoft/swinv2-tiny-patch4-window16-256"
+
+        print(self.swinv2_pretrained_path)
             
         self.win = 7
         self.crf_dims = [128, 256, 512, 1024]
@@ -45,7 +45,6 @@ class ModelConfig():
         
         self.uper_config = UperNetConfig(backbone_config=backbone_config)
 
-
 class Model(nn.Module):
     def __init__(self, config):        
         super(Model, self).__init__()
@@ -53,7 +52,11 @@ class Model(nn.Module):
         self.config = config
         
         self.backbone = UperNetForSemanticSegmentation(self.config.uper_config)
-        
+        self.backbone.backbone.from_pretrained(self.config.swinv2_pretrained_path)
+        # Freeze the encoder layers only
+        for param in self.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+            param.requires_grad = False
+
         #self.backbone.eval() # TODO: Necessary to allow evaluation as some layer requies mean??
     
         self.crf_chain_1 = NewCRFChain(self.config.in_channels, self.config.crf_dims, self.config.v_dims, self.config.win)
