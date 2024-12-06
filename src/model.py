@@ -94,7 +94,7 @@ class Model(nn.Module):
         device = n2.device  
         dn_to_depth = DN_to_depth(b, h, w).to(device) # DX: Layer to converts normal + distance to depth
 
-        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized_inverted"])# Unit: m but scaled to [0,1]
+        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized_inverted"]).clamp(0,1) # Unit: m but scaled to [0,1]
         u2 = self.uncer_head_2(crf_out_2)
 
         # Iterative refinement
