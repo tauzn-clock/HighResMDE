@@ -36,10 +36,10 @@ def main(local_rank, world_size):
     init_process_group(local_rank, world_size)
     
     BATCH_SIZE = 10
-    MODEL_SIZE = "tiny07"
-    SWINV2_SPECIFIC_PATH = "microsoft/swinv2-tiny-patch4-window8-256" #None
+    MODEL_SIZE = "large07"
+    SWINV2_SPECIFIC_PATH = None #"microsoft/swinv2-tiny-patch4-window8-256"
     VAR_FOCUS = 0.85
-    LR = 1e-4
+    LR = 2e-4
     LR_DECAY = 0.975
 
     LOSS_DEPTH_WEIGHT = 1
@@ -76,9 +76,9 @@ def main(local_rank, world_size):
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    silog_criterion = silog_loss(variance_focus=VAR_FOCUS)
+    silog_criterion = silog_loss(variance_focus=VAR_FOCUS).to(local_rank)
     dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
-    normal_estimation = Depth2Normal()
+    normal_estimation = Depth2Normal().to(local_rank)
     blur = transforms.GaussianBlur(kernel_size=5)
 
     for epoch in range(50):
@@ -98,7 +98,7 @@ def main(local_rank, world_size):
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] #Unit: m
-            normal_gt, x["mask"] = normal_estimation(depth_gt * 1000, x["camera_intrinsics_mm"], x["mask"], 1.0) # Intrinsic needs to be in mm, change depth_gt to mm for consistency
+            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 1.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
             #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
@@ -128,7 +128,7 @@ def main(local_rank, world_size):
 
             loss_uncer =  (loss_uncer1 + loss_uncer2)
 
-            loss_normal = LOSS_NORMAL_WEIGHT * ((1 - (normal_gt * norm_est).sum(1, keepdim=True))[x["mask"]]).mean() #* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
+            loss_normal = LOSS_NORMAL_WEIGHT * (1 - ((normal_gt * norm_est).sum(1, keepdim=True)[x["mask"]]).mean() )#* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
             loss_distance = LOSS_DIST_WEIGHT * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss

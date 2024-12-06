@@ -29,8 +29,8 @@ class NYUImageData(BaseImageData):
         self.camera_intrinsics_inverted = np.linalg.inv(self.camera_intrinsics)
         """
 
-        self.camera_intrinsics_resized = torch.Tensor([[fx/4, 0, cx/4, 0 ],
-                                                   [0, fy/4, cy/4, 0],
+        self.camera_intrinsics_resized = torch.Tensor([[fx/4 * 1000, 0, cx/4, 0 ],
+                                                   [0, fy/4 * 1000, cy/4, 0],
                                                    [0, 0, 1, 0],
                                                    [0, 0, 0, 1]])
         
