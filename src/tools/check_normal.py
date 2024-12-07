@@ -29,7 +29,7 @@ for itr, x in enumerate(loop):
     for k in x.keys():
         x[k] = x[k].to(DEVICE)
     depth_gt = x["depth_values"] #Unit: m
-    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 1.0) # TODO: Figure out what scale does
+    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 5.0) # TODO: Scale add as blur
     #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
     normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
     dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Unit: m
