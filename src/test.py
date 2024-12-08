@@ -40,13 +40,13 @@ model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
 for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
     param.requires_grad = False
 #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
-#model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
+model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
 
 normal_estimation = Depth2Normal().to(device)
 for k in x.keys(): x[k] = x[k].to(device)
 d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
 depth_gt = x["depth_values"] #Unit: m
-normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 1.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 5.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
 
 for i in range(len(d1_list)):
     plt.imshow((d1_list[i][0]+d2_list[i][0]).cpu().detach().squeeze())

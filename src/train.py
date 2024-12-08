@@ -34,12 +34,14 @@ def init_process_group(local_rank, world_size):
 
 def main(local_rank, world_size):
     init_process_group(local_rank, world_size)
+
+    PRE_TRAINED_MODEL = "./tmp_model.pth"
     
     BATCH_SIZE = 10
     MODEL_SIZE = "large07"
     SWINV2_SPECIFIC_PATH = None #"microsoft/swinv2-tiny-patch4-window8-256"
     VAR_FOCUS = 0.85
-    LR = 2e-4
+    LR = 1e-3
     LR_DECAY = 0.975
 
     LOSS_DEPTH_WEIGHT = 1
@@ -68,13 +70,16 @@ def main(local_rank, world_size):
     config.width = 640//4
     if not SWINV2_SPECIFIC_PATH is None: config.swinv2_pretrained_path = SWINV2_SPECIFIC_PATH
     model = Model(config).to(local_rank)
+    if not PRE_TRAINED_MODEL is None: 
+        model.load_state_dict(torch.load(PRE_TRAINED_MODEL, weights_only=False))
+        torch.cuda.empty_cache()
     model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
     for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
         param.requires_grad = False
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
-
+   
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     silog_criterion = silog_loss(variance_focus=VAR_FOCUS).to(local_rank)
     dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
