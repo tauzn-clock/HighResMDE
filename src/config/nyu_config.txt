@@ -3,7 +3,7 @@
 --test_dir /
 --test_csv /HighResMDE/src/nyu_test_v2.csv
 
---batch_size 11
+--batch_size 10
 --model_size large07
 --var_focus 0.85
 --lr 2e-4

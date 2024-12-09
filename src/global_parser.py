@@ -1,11 +1,12 @@
 import argparse
 import sys
+import re
 
 def global_parser(current_file):
 
-    parser = argparse.ArgumentParser(description='HighResMDE PyTorch implementation.')
+    parser = argparse.ArgumentParser(description='HighResMDE PyTorch implementation.', fromfile_prefix_chars='@')
 
-    parser.add_argument('file', type=argparse.FileType('r'))
+    parser.add_argument('--file', type=str, help="Path to the file containing arguments")
 
     parser.add_argument('--pretrained_model', type=str, default=None)
 
@@ -30,9 +31,20 @@ def global_parser(current_file):
     parser.add_argument('--metric_cnt', type=int, default=9)
     parser.add_argument('--metric_save_path', type=str, default="metric.csv")
 
-    #args = parser.parse_args([f'@{current_file}'])
+    def parse_args_from_file(file_path):
+        # Read the arguments from the text file
+        with open(file_path, 'r') as file:
+            args = file.read().splitlines()  # Read each line as an argument
+        return args
 
-    args = parser.parse_args([current_file])
+    args = parser.parse_args()
+
+    if args.file:
+        with open(args.file, 'r') as file:
+            content = file.read()
+            content = re.split(r'\s+', content.strip())  
+            content = sys.argv[1:] + content
+            args = parser.parse_args(content)
 
     return args
 
