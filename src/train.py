@@ -21,6 +21,7 @@ from layers.DN_to_distance import DN_to_distance
 from layers.depth_to_normal import Depth2Normal
 from loss import silog_loss, get_metrics
 from segmentation import compute_seg, get_smooth_ND
+from global_parser import global_parser
 
 torch.manual_seed(42)
 
@@ -33,34 +34,37 @@ def init_process_group(local_rank, world_size):
     torch.cuda.set_device(local_rank)  # Set the GPU device for the current process
 
 def main(local_rank, world_size):
+    args = global_parser(sys.argv[1])
     init_process_group(local_rank, world_size)
 
-    PRE_TRAINED_MODEL = "./tmp_model.pth"
+    PRE_TRAINED_MODEL = args.pretrained_model
     
-    BATCH_SIZE = 10
-    MODEL_SIZE = "large07"
-    SWINV2_SPECIFIC_PATH = None #"microsoft/swinv2-tiny-patch4-window8-256"
-    VAR_FOCUS = 0.85
-    LR = 1e-3
-    LR_DECAY = 0.975
+    BATCH_SIZE = args.batch_size
+    MODEL_SIZE = args.model_size
+    SWINV2_SPECIFIC_PATH = args.swinv2_specific_path
+    VAR_FOCUS = args.var_focus
+    LR = args.lr
+    LR_DECAY = args.lr_decay
 
-    LOSS_DEPTH_WEIGHT = 1
-    LOSS_UNCER_WEIGHT = 1
-    LOSS_NORMAL_WEIGHT = 5
-    LOSS_DIST_WEIGHT = 0.25
+    LOSS_DEPTH_WEIGHT = args.loss_depth_weight
+    LOSS_UNCER_WEIGHT = args.loss_uncer_weight
+    LOSS_NORMAL_WEIGHT = args.loss_normal_weight
+    LOSS_DIST_WEIGHT = args.loss_dist_weight
 
-    METRIC_CNT = 9
+    METRIC_CNT = args.metric_cnt
     
-    train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
+    train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_huggingface', '/HighResMDE/src/nyu_train_v3.csv')
+    #train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=train_sampler)
 
-    test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_test.csv')
+    test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_huggingface', '/HighResMDE/src/nyu_test_v3.csv')
+    #test_dataset = BaseImageDataset('test', NYUImageData, args.test_dir, args.test_csv)
     test_sampler = torch.utils.data.DistributedSampler(test_dataset, num_replicas=world_size, rank=local_rank)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=test_sampler)
 
     csv_file = [["silog", "abs_rel", "log10", "rms", "sq_rel", "log_rms", "d1", "d2", "d3"]]
-    with open('metric.csv', mode='w', newline='') as file:
+    with open(args.metric_save_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(csv_file)
 
@@ -160,7 +164,7 @@ def main(local_rank, world_size):
         for param_group in optimizer.param_groups:
             param_group['lr'] *= LR_DECAY
         print(param_group['lr'])
-        torch.save(model.module.state_dict(), 'model.pth')
+        torch.save(model.module.state_dict(), args.model_save_path)
         
         model.eval()
         torch.cuda.empty_cache()
@@ -185,7 +189,7 @@ def main(local_rank, world_size):
 
         for i in range(METRIC_CNT): tot_metric[i]/=cnt
         print(tot_metric)
-        with open("metric.csv", mode='a', newline='') as file:  # Open in append mode
+        with open(args.metric_save_path, mode='a', newline='') as file:  # Open in append mode
             writer = csv.writer(file)
             writer.writerow(tot_metric)  # Write the new row only
         

@@ -1,0 +1,19 @@
+--train_dir /
+--train_csv /HighResMDE/src/nyu_train_v2.csv
+--test_dir /
+--test_csv /HighResMDE/src/nyu_test_v2.csv
+
+--batch_size 11
+--model_size large07
+--var_focus 0.85
+--lr 2e-4
+--lr_decay 0.95
+
+--loss_depth_weight 1
+--loss_uncer_weight 1
+--loss_normal_weight 5
+--loss_dist_weight 0.25
+--model_save_path model.pth
+
+--metric_cnt 9
+--metric_save_path metric.csv
