@@ -3,50 +3,63 @@ sys.path.append('/HighResMDE/src')
 
 from PIL import Image
 import torch
-import tqdm
+import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+import tqdm
+import csv
+import os
+from torchvision import transforms
 
-import matplotlib.pyplot as plt
 from model import Model, ModelConfig
 from dataloader.BaseDataloader import BaseImageDataset
 from dataloader.NYUDataloader import NYUImageData
-
+from layers.DN_to_distance import DN_to_distance
 from layers.depth_to_normal import Depth2Normal
-#torch.manual_seed(42)
-MODEL_PATH = "./model.pth"
-BATCH_SIZE = 4
-MODEL_SIZE = "large07"
-SWINV2_SPECIFIC_PATH = None #"microsoft/swinv2-tiny-patch4-window8-256"
-LOSS_NORMAL_WEIGHT = 5
+from loss import silog_loss, get_metrics
+from segmentation import compute_seg, get_smooth_ND
+from global_parser import global_parser
 
-device = "cuda:0"
+import matplotlib.pyplot as plt
 
-test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
-test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, pin_memory=True)
+args = global_parser()
+local_rank = "cuda"
 
-for i, x in enumerate(test_dataloader):
-    break
-plt.imshow(x["pixel_values"][0].squeeze().permute(1, 2, 0))
+train_dataset = BaseImageDataset('test', NYUImageData, args.train_dir, args.train_csv)
+train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True)
 
-config =  ModelConfig(MODEL_SIZE)
-config.batch_size = BATCH_SIZE
-config.height = 480//4
-config.width = 640//4
-if not SWINV2_SPECIFIC_PATH is None: config.swinv2_pretrained_path = SWINV2_SPECIFIC_PATH
-model = Model(config).to(device)
+config = ModelConfig(args.model_size)
+if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
+model = Model(config).to(local_rank)
+
+model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
+torch.cuda.empty_cache()
 model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
 # Freeze the encoder layers only
 for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
     param.requires_grad = False
 #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
-model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
 
-normal_estimation = Depth2Normal().to(device)
-for k in x.keys(): x[k] = x[k].to(device)
+silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
+dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
+normal_estimation = Depth2Normal().to(local_rank)
+
+model.train()
+
+loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {1}", unit="batch")
+for itr, x in enumerate(loop):
+    break
+for k in x.keys():
+    x[k] = x[k].to(local_rank)
 d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
+
+# Estimate GT normal and distance
+
 depth_gt = x["depth_values"] #Unit: m
-normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 5.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+#normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
+normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
+dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
 for i in range(len(d1_list)):
     plt.imshow((d1_list[i][0]+d2_list[i][0]).cpu().detach().squeeze())
@@ -67,6 +80,3 @@ print(normal_gt_img.shape)
 print(normal_gt.max(), normal_gt.min())
 plt.imshow(normal_gt_img.permute(1,2,0).cpu().detach().squeeze())
 plt.savefig('normal_gt.png')
-
-loss_normal = LOSS_NORMAL_WEIGHT * (1 - ((normal_gt * norm_est).sum(1, keepdim=True)[x["mask"]]).mean() )
-print(loss_normal)

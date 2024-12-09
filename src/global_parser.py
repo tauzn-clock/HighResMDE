@@ -16,6 +16,8 @@ def global_parser():
     parser.add_argument('--test_csv', type=str)
 
     parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--width', type=int, default=640)
+    parser.add_argument('--height', type=int, default=480)
     parser.add_argument('--model_size', type=str, default="large07")
     parser.add_argument('--swinv2_specific_path', type=str, default=None)
     parser.add_argument('--var_focus', type=float, default=0.85)
@@ -44,8 +46,10 @@ def global_parser():
         with open(args.file, 'r') as file:
             content = file.read()
             content = re.split(r'\s+', content.strip())  
-            content = sys.argv[1:] + content
+            content = content + sys.argv[1:]
             args = parser.parse_args(content)
+    
+    print(args)
 
     return args
 
