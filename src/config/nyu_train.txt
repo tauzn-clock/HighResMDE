@@ -4,8 +4,8 @@
 --test_csv /HighResMDE/src/nyu_test_v2.csv
 
 --batch_size 10
---width 480
---height 640
+--width 640
+--height 480
 --model_size large07
 --var_focus 0.85
 --lr 2e-5
