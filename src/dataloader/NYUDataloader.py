@@ -49,12 +49,12 @@ class NYUImageData(BaseImageData):
         H, W = self.pixel_values.size
 
         mask = np.zeros((W,H), dtype=np.bool)
-        mask[16:464, 16:624] = True #https://github.com/xapharius/pytorch-nyuv2?tab=readme-ov-file
+        mask[45:471, 41:601] = True
 
         # Remove max and min values
-        #depth_np = np.array(self.depth_values)
-        #max_min_mask = (depth_np == depth_np.max()) | (depth_np == depth_np.min())
-        #mask = mask & ~max_min_mask
+        depth_np = np.array(self.depth_values)
+        max_min_mask = (depth_np == depth_np.max()) | (depth_np == depth_np.min())
+        mask = mask & ~max_min_mask
 
         self.mask = Image.fromarray(mask)
         

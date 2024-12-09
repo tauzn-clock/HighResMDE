@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 BATCH_SIZE = 10
 DEVICE = "cuda"
-train_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_data/', '/HighResMDE/src/nyu_train.csv')
+train_dataset = BaseImageDataset('train', NYUImageData, '/', '/HighResMDE/src/nyu_test_v2.csv')
 train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True)
 
 normal_estimation = Depth2Normal().to(DEVICE)
@@ -59,3 +59,6 @@ print(dist_gt[0].max(), dist_gt[0].min())
 plt.imshow(depth_est[0].permute(1,2,0).cpu().numpy()/(depth_est[0].cpu().numpy().max()))
 plt.savefig(f"depth_est.png", bbox_inches='tight', dpi=300)
 print(depth_est[0].max(), depth_est[0].min())
+
+plt.imshow(x["mask"][0].cpu().numpy().squeeze())
+plt.savefig(f"mask.png", bbox_inches='tight', dpi=300)
