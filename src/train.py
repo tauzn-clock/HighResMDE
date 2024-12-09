@@ -45,6 +45,7 @@ def main(local_rank, world_size):
     VAR_FOCUS = args.var_focus
     LR = args.lr
     LR_DECAY = args.lr_decay
+    NORMAL_BLUR = args.normal_blur
 
     LOSS_DEPTH_WEIGHT = args.loss_depth_weight
     LOSS_UNCER_WEIGHT = args.loss_uncer_weight
@@ -53,13 +54,11 @@ def main(local_rank, world_size):
 
     METRIC_CNT = args.metric_cnt
     
-    train_dataset = BaseImageDataset('train', NYUImageData, '/scratchdata/nyu_huggingface', '/HighResMDE/src/nyu_train_v3.csv')
-    #train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
+    train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=train_sampler)
 
-    test_dataset = BaseImageDataset('test', NYUImageData, '/scratchdata/nyu_huggingface', '/HighResMDE/src/nyu_test_v3.csv')
-    #test_dataset = BaseImageDataset('test', NYUImageData, args.test_dir, args.test_csv)
+    test_dataset = BaseImageDataset('test', NYUImageData, args.test_dir, args.test_csv)
     test_sampler = torch.utils.data.DistributedSampler(test_dataset, num_replicas=world_size, rank=local_rank)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=test_sampler)
 
@@ -107,7 +106,7 @@ def main(local_rank, world_size):
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] #Unit: m
-            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 5.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], NORMAL_BLUR) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
             #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe

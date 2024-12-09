@@ -6,8 +6,9 @@
 --batch_size 10
 --model_size large07
 --var_focus 0.85
---lr 2e-4
---lr_decay 0.95
+--lr 2e-5
+--lr_decay 0.99
+--normal_blur 11.0
 
 --loss_depth_weight 1
 --loss_uncer_weight 1
