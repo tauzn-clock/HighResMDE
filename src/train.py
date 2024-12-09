@@ -50,10 +50,7 @@ def main(local_rank, world_size):
         writer = csv.writer(file)
         writer.writerows(csv_file)
 
-    config =  ModelConfig(args.model_size)
-    config.batch_size = args.batch_size
-    config.height = 480//4
-    config.width = 640//4
+    config = ModelConfig(args.model_size)
     if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
     model = Model(config).to(local_rank)
     if not args.pretrained_model is None: 

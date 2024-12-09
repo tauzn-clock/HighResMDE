@@ -1,0 +1,10 @@
+--pretrained_model ./model.pth
+
+--test_dir /
+--test_csv /HighResMDE/src/nyu_test_v2.csv
+
+--batch_size 10
+--model_size large07
+
+--metric_cnt 9
+--metric_save_path metric.csv
