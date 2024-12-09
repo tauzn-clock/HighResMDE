@@ -8,7 +8,7 @@
 --var_focus 0.85
 --lr 2e-5
 --lr_decay 0.99
---normal_blur 11.0
+--normal_blur 1.0
 
 --loss_depth_weight 1
 --loss_uncer_weight 1

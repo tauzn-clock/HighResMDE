@@ -34,47 +34,30 @@ def init_process_group(local_rank, world_size):
     torch.cuda.set_device(local_rank)  # Set the GPU device for the current process
 
 def main(local_rank, world_size):
-    args = global_parser(sys.argv[1])
+    args = global_parser()
     init_process_group(local_rank, world_size)
 
-    PRE_TRAINED_MODEL = args.pretrained_model
-    
-    BATCH_SIZE = args.batch_size
-    MODEL_SIZE = args.model_size
-    SWINV2_SPECIFIC_PATH = args.swinv2_specific_path
-    VAR_FOCUS = args.var_focus
-    LR = args.lr
-    LR_DECAY = args.lr_decay
-    NORMAL_BLUR = args.normal_blur
-
-    LOSS_DEPTH_WEIGHT = args.loss_depth_weight
-    LOSS_UNCER_WEIGHT = args.loss_uncer_weight
-    LOSS_NORMAL_WEIGHT = args.loss_normal_weight
-    LOSS_DIST_WEIGHT = args.loss_dist_weight
-
-    METRIC_CNT = args.metric_cnt
-    
     train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
     train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
-    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=train_sampler)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, sampler=train_sampler)
 
     test_dataset = BaseImageDataset('test', NYUImageData, args.test_dir, args.test_csv)
     test_sampler = torch.utils.data.DistributedSampler(test_dataset, num_replicas=world_size, rank=local_rank)
-    test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, pin_memory=True, sampler=test_sampler)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, pin_memory=True, sampler=test_sampler)
 
     csv_file = [["silog", "abs_rel", "log10", "rms", "sq_rel", "log_rms", "d1", "d2", "d3"]]
     with open(args.metric_save_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(csv_file)
 
-    config =  ModelConfig(MODEL_SIZE)
-    config.batch_size = BATCH_SIZE
+    config =  ModelConfig(args.model_size)
+    config.batch_size = args.batch_size
     config.height = 480//4
     config.width = 640//4
-    if not SWINV2_SPECIFIC_PATH is None: config.swinv2_pretrained_path = SWINV2_SPECIFIC_PATH
+    if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
     model = Model(config).to(local_rank)
-    if not PRE_TRAINED_MODEL is None: 
-        model.load_state_dict(torch.load(PRE_TRAINED_MODEL, weights_only=False))
+    if not args.pretrained_model is None: 
+        model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
         torch.cuda.empty_cache()
     model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
@@ -83,8 +66,8 @@ def main(local_rank, world_size):
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
    
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    silog_criterion = silog_loss(variance_focus=VAR_FOCUS).to(local_rank)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
     dn_to_distance = DN_to_distance(config.batch_size, config.height * 4, config.width * 4).to(local_rank)
     normal_estimation = Depth2Normal().to(local_rank)
     blur = transforms.GaussianBlur(kernel_size=5)
@@ -97,7 +80,7 @@ def main(local_rank, world_size):
             optimizer.zero_grad()
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
-            if x["depth_values"].shape[0] != BATCH_SIZE: continue # Hacky solution to deal with batch size issue
+            if x["depth_values"].shape[0] != args.batch_size: continue # Hacky solution to deal with batch size issue
 
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
 
@@ -106,7 +89,7 @@ def main(local_rank, world_size):
             # Estimate GT normal and distance
 
             depth_gt = x["depth_values"] #Unit: m
-            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], NORMAL_BLUR) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+            normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
             #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
@@ -120,9 +103,9 @@ def main(local_rank, world_size):
             loss_depth2 = 0
             weights_sum = 0
             for i in range(len(d1_list) - 1):
-                loss_depth1 += (VAR_FOCUS**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], depth_gt, x["mask"])
-                loss_depth2 += (VAR_FOCUS**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
-                weights_sum += VAR_FOCUS**(len(d1_list)-i-2)
+                loss_depth1 += (args.var_focus**(len(d1_list)-i-2)) * silog_criterion(d1_list[i + 1], depth_gt, x["mask"])
+                loss_depth2 += (args.var_focus**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
+                weights_sum += args.var_focus**(len(d1_list)-i-2)
             
             loss_depth =  ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
@@ -136,8 +119,8 @@ def main(local_rank, world_size):
 
             loss_uncer =  (loss_uncer1 + loss_uncer2)
 
-            loss_normal = LOSS_NORMAL_WEIGHT * (1 - ((normal_gt * norm_est).sum(1, keepdim=True)[x["mask"]]).mean() )#* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
-            loss_distance = LOSS_DIST_WEIGHT * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
+            loss_normal = args.loss_normal_weight * (1 - ((normal_gt * norm_est).sum(1, keepdim=True)[x["mask"]]).mean() )#* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
+            loss_distance = args.loss_dist_weight * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
 
             # Segmentation Loss
             #segment, planar_mask, dissimilarity_map = compute_seg(x["pixel_values"], norm_est, dist_est[:, 0])
@@ -161,13 +144,13 @@ def main(local_rank, world_size):
         
         # Reduce learning rate
         for param_group in optimizer.param_groups:
-            param_group['lr'] *= LR_DECAY
+            param_group['lr'] *= args.lr_decay
         print(param_group['lr'])
         torch.save(model.module.state_dict(), args.model_save_path)
         
         model.eval()
         torch.cuda.empty_cache()
-        tot_metric = [0 for _ in range(METRIC_CNT)]
+        tot_metric = [0 for _ in range(args.metric_cnt)]
         cnt = 0
         with torch.no_grad():
             for _, x in enumerate(tqdm.tqdm(test_dataloader)):
@@ -182,11 +165,11 @@ def main(local_rank, world_size):
                 
                 for b in range(x["max_depth"].shape[0]):
                     metric = get_metrics(depth_gt[b], ((d1 + d2)/2)[b], x["mask"][b])
-                    assert len(metric) == METRIC_CNT
-                    for i in range(METRIC_CNT): tot_metric[i] += metric[i].cpu().detach().item()
+                    assert len(metric) == args.metric_cnt
+                    for i in range(args.metric_cnt): tot_metric[i] += metric[i].cpu().detach().item()
                     cnt+=1
 
-        for i in range(METRIC_CNT): tot_metric[i]/=cnt
+        for i in range(args.metric_cnt): tot_metric[i]/=cnt
         print(tot_metric)
         with open(args.metric_save_path, mode='a', newline='') as file:  # Open in append mode
             writer = csv.writer(file)

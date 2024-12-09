@@ -2,7 +2,7 @@ import argparse
 import sys
 import re
 
-def global_parser(current_file):
+def global_parser():
 
     parser = argparse.ArgumentParser(description='HighResMDE PyTorch implementation.', fromfile_prefix_chars='@')
 
@@ -21,6 +21,7 @@ def global_parser(current_file):
     parser.add_argument('--var_focus', type=float, default=0.85)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
+    parser.add_argument('--normal_blur', type=float, default=5.0)
 
     parser.add_argument('--loss_depth_weight', type=int, default=1)
     parser.add_argument('--loss_uncer_weight', type=int, default=1)
@@ -49,7 +50,7 @@ def global_parser(current_file):
     return args
 
 if __name__ == '__main__':
-    args = global_parser(sys.argv[1])
+    args = global_parser()
     print(args)
     print(args.batch_size)
     print(args.train_csv)
