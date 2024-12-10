@@ -32,9 +32,10 @@ config = ModelConfig(args.model_size)
 if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
 model = Model(config).to(local_rank)
 
+print("Using ", args.pretrained_model)
 model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
 torch.cuda.empty_cache()
-model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
+#model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
 # Freeze the encoder layers only
 for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
     param.requires_grad = False
@@ -44,7 +45,7 @@ silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
 dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
 normal_estimation = Depth2Normal().to(local_rank)
 
-model.train()
+model.eval()
 
 loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {1}", unit="batch")
 for itr, x in enumerate(loop):

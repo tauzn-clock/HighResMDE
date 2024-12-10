@@ -30,12 +30,13 @@ config = ModelConfig(args.model_size)
 if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
 model = Model(config).to(local_rank)
 
+print("Using ", args.pretrained_model)
 model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
 torch.cuda.empty_cache()
-model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
+#model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
 # Freeze the encoder layers only
-for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
-    param.requires_grad = False
+#for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+#    param.requires_grad = False
 #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
 model.eval()

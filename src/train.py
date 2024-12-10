@@ -23,6 +23,8 @@ from loss import silog_loss, get_metrics
 from segmentation import compute_seg, get_smooth_ND
 from global_parser import global_parser
 
+import matplotlib.pyplot as plt
+
 torch.manual_seed(42)
 
 def init_process_group(local_rank, world_size):
@@ -54,6 +56,7 @@ def main(local_rank, world_size):
     if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
     model = Model(config).to(local_rank)
     if not args.pretrained_model is None: 
+        print("Using ", args.pretrained_model)
         model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
         torch.cuda.empty_cache()
     model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
@@ -100,7 +103,7 @@ def main(local_rank, world_size):
                 loss_depth2 += (args.var_focus**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += args.var_focus**(len(d1_list)-i-2)
             
-            loss_depth =  ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
+            loss_depth =  args.loss_depth_weight * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
             # Uncertainty Loss
 
@@ -110,7 +113,7 @@ def main(local_rank, world_size):
             loss_uncer1 = torch.abs(u1-uncer1_gt)[x["mask"]].mean()
             loss_uncer2 = torch.abs(u2-uncer2_gt)[x["mask"]].mean()
 
-            loss_uncer =  (loss_uncer1 + loss_uncer2)
+            loss_uncer =  args.loss_uncer_weight * (loss_uncer1 + loss_uncer2)
 
             loss_normal = args.loss_normal_weight * (1 - ((normal_gt * norm_est).sum(1, keepdim=True)[x["mask"]]).mean() )#* x["mask"]).sum() / (x["mask"] + 1e-7).sum()
             loss_distance = args.loss_dist_weight * torch.abs(dist_gt- dist_est)[x["mask"]].mean()
