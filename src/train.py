@@ -61,8 +61,8 @@ def main(local_rank, world_size):
         torch.cuda.empty_cache()
     model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
-    for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
-        param.requires_grad = False
+    #for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+    #    param.requires_grad = False
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
    

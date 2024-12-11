@@ -22,7 +22,7 @@ class ModelConfig():
             self.depths = [2, 2, 18, 2]
             self.num_heads = [6, 12, 24, 48]
             self.in_channels = [192, 384, 768, 1536]
-            self.swinv2_pretrained_path = "microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft"
+            self.swinv2_pretrained_path = "microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft"
         elif version[:-2] == 'tiny':
             self.embed_dim = 96
             self.depths = [2, 2, 6, 2]
@@ -32,7 +32,7 @@ class ModelConfig():
 
         print(self.swinv2_pretrained_path)
             
-        self.win = 7
+        self.win = int(version[-2:])
         self.crf_dims = [128, 256, 512, 1024]
         self.v_dims = [64, 128, 256, 512]
         
@@ -73,11 +73,6 @@ class Model(nn.Module):
         
         features = outputs.feature_maps
 
-        #logits = self.backbone.decode_head(features)
-        #logits = nn.functional.interpolate(logits, size=x["pixel_values"].shape[2:], mode="bilinear", align_corners=False)
-        
-        #laterals = [lateral_conv(features[i]) for i, lateral_conv in enumerate(self.backbone .decode_head.lateral_convs)]
-            
         psp_out =self.backbone.decode_head.psp_forward(features)
         
         # Depth
@@ -94,7 +89,7 @@ class Model(nn.Module):
         device = n2.device  
         dn_to_depth = DN_to_depth(b, h, w).to(device) # DX: Layer to converts normal + distance to depth
 
-        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized_inverted"]).clamp(0,1) # Unit: m but scaled to [0,1]
+        d2 = dn_to_depth(n2, distance, x["camera_intrinsics_resized_inverted"]) # Unit: m but scaled to [0,1]
         u2 = self.uncer_head_2(crf_out_2)
 
         # Iterative refinement

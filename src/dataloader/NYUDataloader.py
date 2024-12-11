@@ -3,6 +3,7 @@ from PIL import Image, ImageEnhance
 from torchvision import transforms
 import numpy as np
 import torch
+import torch.nn.functional as F
 import os
 import cv2
 import random
@@ -94,7 +95,16 @@ def preprocess_transform(input):
     output["camera_intrinsics_mm"] = input.camera_intrinsics_mm
     output["camera_intrinsics_mm_inverted"] = input.camera_intrinsics_mm_inverted
     output["max_depth"] = input.depth_max #Unit: m
-    
+
+    if False:
+        #Downsample
+        output["pixel_values"] = F.interpolate(output["pixel_values"].unsqueeze(0), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0)
+        output["depth_values"] = F.interpolate(output["depth_values"].unsqueeze(0), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0)
+        output["mask"] = F.interpolate(output["mask"].unsqueeze(0).to(torch.float32), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0).round().to(torch.bool)
+
+        output["camera_intrinsics_mm"] = input.camera_intrinsics_resized
+        output["camera_intrinsics_mm_inverted"] = input.camera_intrinsics_resized_inverted
+
     return output
 
 def train_transform(input):

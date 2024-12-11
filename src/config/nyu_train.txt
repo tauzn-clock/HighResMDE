@@ -3,14 +3,14 @@
 --test_dir /
 --test_csv /HighResMDE/src/nyu_test_v2.csv
 
---batch_size 10
+--batch_size 6
 --width 640
 --height 480
---model_size large07
+--model_size tiny16
 --var_focus 0.85
 --lr 2e-5
 --lr_decay 0.99
---normal_blur 1.0
+--normal_blur 5.0
 
 --loss_depth_weight 1
 --loss_uncer_weight 1
