@@ -1,7 +1,7 @@
 --pretrained_model ./model.pth
 
 --test_dir /
---test_csv /HighResMDE/src/nyu_test_v2.csv
+--test_csv /HighResMDE/src/nyu_test_v3.csv
 
 --batch_size 8
 --model_size tiny16

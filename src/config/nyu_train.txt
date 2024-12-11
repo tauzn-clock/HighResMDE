@@ -1,7 +1,7 @@
 --train_dir /
---train_csv /HighResMDE/src/nyu_train_v2.csv
+--train_csv /HighResMDE/src/nyu_train_v3.csv
 --test_dir /
---test_csv /HighResMDE/src/nyu_test_v2.csv
+--test_csv /HighResMDE/src/nyu_test_v3.csv
 
 --batch_size 6
 --width 640
