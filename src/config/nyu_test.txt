@@ -1,6 +1,6 @@
 --pretrained_model ./model.pth
 
---test_dir /
+--test_dir /scratchdata/nyu_huggingface/
 --test_csv /HighResMDE/src/nyu_test_v3.csv
 
 --batch_size 8

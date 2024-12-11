@@ -103,7 +103,10 @@ def main(local_rank, world_size):
                 loss_depth2 += (args.var_focus**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += args.var_focus**(len(d1_list)-i-2)
             
-            loss_depth =  args.loss_depth_weight * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
+            if (epoch < 5):
+                loss_depth =  args.loss_depth_weight * (loss_depth1_0 + loss_depth2_0)
+            else:
+                loss_depth =  args.loss_depth_weight * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
             
             # Uncertainty Loss
 
