@@ -20,10 +20,13 @@ def global_parser():
     parser.add_argument('--height', type=int, default=480)
     parser.add_argument('--model_size', type=str, default="large07")
     parser.add_argument('--swinv2_specific_path', type=str, default=None)
+    parser.add_argument('--encoder_grad', type=bool, default=True)
     parser.add_argument('--var_focus', type=float, default=0.85)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--normal_blur', type=float, default=5.0)
+    parser.add_argument('--total_epoch', type=int, default=50)
+    parser.add_argument('--initial_epoch', type=int, default=5)
 
     parser.add_argument('--loss_depth_weight', type=int, default=1)
     parser.add_argument('--loss_uncer_weight', type=int, default=1)

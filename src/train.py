@@ -61,9 +61,9 @@ def main(local_rank, world_size):
         torch.cuda.empty_cache()
     model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
-    #for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
-    #    param.requires_grad = False
-    #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+    if not args.encoder_grad:
+        for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+            param.requires_grad = False
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
    
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -71,7 +71,7 @@ def main(local_rank, world_size):
     dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
     normal_estimation = Depth2Normal().to(local_rank)
 
-    for epoch in range(50):
+    for epoch in range(args.total_epoch):
         model.train()
 
         loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {epoch+1}", unit="batch")
@@ -103,7 +103,7 @@ def main(local_rank, world_size):
                 loss_depth2 += (args.var_focus**(len(d2_list)-i-2)) * silog_criterion(d2_list[i + 1], depth_gt, x["mask"])
                 weights_sum += args.var_focus**(len(d1_list)-i-2)
             
-            if (epoch < 5):
+            if (epoch < args.initial_epoch):
                 loss_depth =  args.loss_depth_weight * (loss_depth1_0 + loss_depth2_0)
             else:
                 loss_depth =  args.loss_depth_weight * ((loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 )
@@ -131,6 +131,7 @@ def main(local_rank, world_size):
             loss = loss.mean()
 
             loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=10, norm_type=2)
             optimizer.step()
             
             #loop.set_postfix(loss=loss.item())
