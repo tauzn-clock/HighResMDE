@@ -1,3 +1,0 @@
---encoder large07
---image_path /scratchdata/nyu_depth_v2/official_splits/test/bathroom/rgb_00045.jpg
---max_depth 10.0
