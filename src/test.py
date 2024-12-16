@@ -57,10 +57,10 @@ d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
 # Estimate GT normal and distance
 
 depth_gt = x["depth_values"] #Unit: m
-normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
 #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
 normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
-dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
+dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
 for i in range(len(d1_list)):
     plt.imshow((d1_list[i][0]+d2_list[i][0]).cpu().detach().squeeze())

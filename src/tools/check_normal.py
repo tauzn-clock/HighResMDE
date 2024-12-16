@@ -29,16 +29,16 @@ for itr, x in enumerate(loop):
     for k in x.keys():
         x[k] = x[k].to(DEVICE)
     depth_gt = x["depth_values"] #Unit: m
-    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics_mm"], x["mask"], 5.0) # TODO: Scale add as blur
+    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 5.0) # TODO: Scale add as blur
     #normal_gt = torch.stack([blur(each_normal) for each_normal in normal_gt])
     normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
-    dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_mm_inverted"]) #Unit: m
+    dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Unit: m
 
     # For testing
     b, _, h, w =  normal_gt.shape 
     device = normal_gt.device  
     dn_to_depth = DN_to_depth(b, h, w).to(device)
-    depth_est = dn_to_depth(normal_gt, dist_gt, x["camera_intrinsics_mm_inverted"])#.clamp(0, 1)
+    depth_est = dn_to_depth(normal_gt, dist_gt, x["camera_intrinsics_inverted"])#.clamp(0, 1)
     break
 
 plt.imshow(x["pixel_values"][0].permute(1,2,0).cpu().numpy())

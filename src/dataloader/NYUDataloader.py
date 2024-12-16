@@ -3,7 +3,6 @@ from PIL import Image, ImageEnhance
 from torchvision import transforms
 import numpy as np
 import torch
-import torch.nn.functional as F
 import os
 import cv2
 import random
@@ -16,33 +15,24 @@ class NYUImageData(BaseImageData):
         
         self.pixel_values = Image.open(os.path.join(root, args[0]))
         self.depth_values = Image.open(os.path.join(root, args[1]))
-        fx = float(args[2]) /1000 #Unit: m
-        fy = float(args[3]) /1000 #Unit: m
+        fx = float(args[2])  #Unit: mm
+        fy = float(args[3])  #Unit: mm
         cx = float(args[4])
         cy = float(args[5])
 
-        """
-        self.camera_intrinsics = np.array([[fx, 0, cx, 0],
-                                           [0, fy, cy, 0],
-                                           [0, 0, 1, 0],
-                                           [0, 0, 0, 1]], dtype=np.float32)
-        
-        self.camera_intrinsics_inverted = np.linalg.inv(self.camera_intrinsics)
-        """
-
-        self.camera_intrinsics_resized = torch.Tensor([[fx/4 * 1000, 0, cx/4, 0 ],
-                                                   [0, fy/4 * 1000, cy/4, 0],
+        self.camera_intrinsics_resized = torch.Tensor([[fx/4, 0, cx/4, 0 ],
+                                                   [0, fy/4, cy/4, 0],
                                                    [0, 0, 1, 0],
                                                    [0, 0, 0, 1]])
         
         self.camera_intrinsics_resized_inverted = torch.linalg.inv(self.camera_intrinsics_resized)
 
-        self.camera_intrinsics_mm = torch.Tensor([[fx*1000, 0, cx, 0],
-                                                  [0, fy*1000, cy, 0],
+        self.camera_intrinsics = torch.Tensor([[fx, 0, cx, 0],
+                                                  [0, fy, cy, 0],
                                                   [0, 0, 1, 0],
                                                   [0, 0, 0, 1]])
 
-        self.camera_intrinsics_mm_inverted = torch.linalg.inv(self.camera_intrinsics_mm)
+        self.camera_intrinsics_inverted = torch.linalg.inv(self.camera_intrinsics)
 
         self.depth_rescale = float(args[6])
         self.depth_max = float(args[7])
@@ -88,22 +78,11 @@ def preprocess_transform(input):
     output["pixel_values"] = img_transform(input.pixel_values)
     output["depth_values"] = torch.Tensor(np.array(input.depth_values)).unsqueeze(0) / input.depth_rescale # Unit: m
     output["mask"] = mask_transform(input.mask)==1
-    #output["camera_intrinsics"] = torch.Tensor(input.camera_intrinsics)
-    #output["camera_intrinsics_inverted"] = torch.Tensor(input.camera_intrinsics_inverted)
     #output["camera_intrinsics_resized"] = torch.Tensor(input.camera_intrinsics_resized)
     output["camera_intrinsics_resized_inverted"] = input.camera_intrinsics_resized_inverted
-    output["camera_intrinsics_mm"] = input.camera_intrinsics_mm
-    output["camera_intrinsics_mm_inverted"] = input.camera_intrinsics_mm_inverted
+    output["camera_intrinsics"] = input.camera_intrinsics
+    output["camera_intrinsics_inverted"] = input.camera_intrinsics_inverted
     output["max_depth"] = input.depth_max #Unit: m
-
-    if False:
-        #Downsample
-        output["pixel_values"] = F.interpolate(output["pixel_values"].unsqueeze(0), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0)
-        output["depth_values"] = F.interpolate(output["depth_values"].unsqueeze(0), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0)
-        output["mask"] = F.interpolate(output["mask"].unsqueeze(0).to(torch.float32), scale_factor=0.25, mode='bilinear', align_corners=False).squeeze(0).round().to(torch.bool)
-
-        output["camera_intrinsics_mm"] = input.camera_intrinsics_resized
-        output["camera_intrinsics_mm_inverted"] = input.camera_intrinsics_resized_inverted
 
     return output
 
