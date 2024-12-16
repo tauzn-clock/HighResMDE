@@ -19,6 +19,8 @@ from utils import post_process_depth, flip_lr, silog_loss, DN_to_distance, DN_to
 from networks.NewCRFDepth import NewCRFDepth
 from datetime import datetime
 
+from layers.depth_to_normal import Depth2Normal
+
 parser = argparse.ArgumentParser(description='NDDepth PyTorch implementation.', fromfile_prefix_chars='@')
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
@@ -280,6 +282,7 @@ def main_worker(gpu, ngpus_per_node, args):
     silog_criterion = silog_loss(variance_focus=args.variance_focus)
     dn_to_depth = DN_to_depth(args.batch_size, args.input_height, args.input_width).cuda(args.gpu)
     dn_to_distance = DN_to_distance(args.batch_size, args.input_height, args.input_width).cuda(args.gpu)
+    #normal_estimation = Depth2Normal().cuda(args.gpu)
 
     start_time = time.time()
     duration = 0
@@ -326,6 +329,8 @@ def main_worker(gpu, ngpus_per_node, args):
             else:
                 mask = depth_gt > 1.0
             
+            #normal_gt, mask = normal_estimation(depth_gt, inv_K_p, mask, 11.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+            #normal_gt_norm = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             normal_gt = torch.stack([normal_gt[:, 0], normal_gt[:, 2], normal_gt[:, 1]], 1)
             normal_gt_norm = F.normalize(normal_gt, dim=1, p=2)
             distance_gt = dn_to_distance(depth_gt, normal_gt_norm, inv_K_p)
@@ -360,15 +365,27 @@ def main_worker(gpu, ngpus_per_node, args):
                     
                     weights_sum += 0.85**(len(depth1_list)-i-2)
 
+
+            #print(depth_gt.max(), depth_gt.min())
+            #print(depth1_list[-1].max(), depth1_list[-1].min())
+            #print(depth2_list[-1].max(), depth2_list[-1].min())
+
+            loss_total_depth = (loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0
+            loss_total_uncer = (loss_uncer1 + loss_uncer2)
+
             loss_normal = 5 * ((1 - (normal_gt_norm * normal_est_norm).sum(1, keepdim=True)) * mask.float()).sum() / (mask.float() + 1e-7).sum()
             loss_distance = 0.25 * torch.abs(distance_gt[mask] - distance_est[mask]).mean()
 
-            segment, planar_mask, dissimilarity_map = compute_seg(image, normal_est_norm, distance_est[:, 0])
-            loss_grad_normal, loss_grad_distance = get_smooth_ND(normal_est_norm, distance_est, planar_mask)
+            #segment, planar_mask, dissimilarity_map = compute_seg(image, normal_est_norm, distance_est[:, 0])
+            #loss_grad_normal, loss_grad_distance = get_smooth_ND(normal_est_norm, distance_est, planar_mask)
 
-            loss = (loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 + loss_uncer1 + loss_uncer2 + loss_normal + loss_distance + 0.01 * loss_grad_normal + 0.01 * loss_grad_distance
+            #loss_total_seg = 0.01 * (loss_grad_distance + loss_grad_normal)
+
+            loss =  loss_total_depth + loss_total_uncer + loss_normal + loss_distance #+ loss_total_seg
             #loss = (loss_depth1 + loss_depth2) / weights_sum + loss_depth1_0 + loss_depth2_0 + loss_uncer2 + loss_normal + loss_distance + 0.01 * loss_grad_normal + 0.01 * loss_grad_distance
 
+            #print("loss_depth1: {:.3f}, loss_depth2: {:.3f}, loss_uncer1: {:.3f}, loss_uncer2: {:.3f}, loss_normal: {:.3f}, loss_distance: {:.3f}, loss_grad_normal: {:.3f}, loss_grad_distance: {:.3f}".format(loss_depth1, loss_depth2, loss_uncer1, loss_uncer2, loss_normal, loss_distance, loss_grad_normal, loss_grad_distance))
+            #print("loss: {:.3f}".format(loss))
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=10, norm_type=2)
 
@@ -403,9 +420,9 @@ def main_worker(gpu, ngpus_per_node, args):
                     writer.add_scalar('silog_loss', (loss_depth1 + loss_depth2) / weights_sum + (loss_depth1_0 + loss_depth2_0), global_step)
                     writer.add_scalar('uncer_loss', (loss_uncer1 + loss_uncer2), global_step)
                     writer.add_scalar('normal_loss', loss_normal, global_step)
-                    writer.add_scalar('grad_normal_loss', loss_grad_normal, global_step)
+                    #writer.add_scalar('grad_normal_loss', loss_grad_normal, global_step)
                     writer.add_scalar('distance_loss', loss_distance, global_step)
-                    writer.add_scalar('grad_distance_loss', loss_grad_distance, global_step)
+                    #writer.add_scalar('grad_distance_loss', loss_grad_distance, global_step)
                     writer.add_scalar('learning_rate', current_lr, global_step)
                     writer.add_scalar('var average', var_sum.item()/var_cnt, global_step)
 
