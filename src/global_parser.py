@@ -2,6 +2,16 @@ import argparse
 import sys
 import re
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def global_parser():
 
     parser = argparse.ArgumentParser(description='HighResMDE PyTorch implementation.', fromfile_prefix_chars='@')
@@ -20,14 +30,14 @@ def global_parser():
     parser.add_argument('--height', type=int, default=480)
     parser.add_argument('--model_size', type=str, default="large07")
     parser.add_argument('--swinv2_specific_path', type=str, default=None)
-    parser.add_argument('--encoder_grad', type=bool, default=True)
+    parser.add_argument('--encoder_grad',action=argparse.BooleanOptionalAction)
     parser.add_argument('--var_focus', type=float, default=0.85)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--normal_blur', type=float, default=5.0)
     parser.add_argument('--total_epoch', type=int, default=50)
     parser.add_argument('--initial_epoch', type=int, default=5)
-    parser.add_argument('--cutmix', type=bool, default=False)
+    parser.add_argument('--cutmix', action=argparse.BooleanOptionalAction)
     parser.add_argument('--cutmix_prob', type=float, default=0.5)
 
     parser.add_argument('--loss_depth_weight', type=int, default=1)
