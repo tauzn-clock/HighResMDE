@@ -95,7 +95,7 @@ def main(local_rank, world_size):
             # CutMix
             if args.cutmix:
                 if torch.rand(1) < args.cutmix_prob:
-                    x["pixel_values"], x["depth_values"], x["mask"], normal_gt = CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt)
+                    x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt = CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
 
             # Forward pass
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
