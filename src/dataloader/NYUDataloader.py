@@ -3,11 +3,14 @@ from PIL import Image, ImageEnhance
 from torchvision import transforms
 import numpy as np
 import torch
+import torch.nn.functional as F
 import os
 import cv2
 import random
 
 from dataloader.BaseDataloader import BaseImageData
+
+from layers.depth_to_normal import Depth2Normal
 
 class NYUImageData(BaseImageData):
     def __init__(self, root, *args, **kwargs):
@@ -105,9 +108,9 @@ def train_transform(input):
         input.mask = input.mask.transpose(Image.FLIP_LEFT_RIGHT)
 
     # Rotate
-    deg = random.uniform(-5,5)
-    input.pixel_values = input.pixel_values.rotate(deg)
-    input.depth_values = input.depth_values.rotate(deg)
-    input.mask = input.mask.rotate(deg)
+    #deg = random.uniform(-5,5)
+    #input.pixel_values = input.pixel_values.rotate(deg)
+    #input.depth_values = input.depth_values.rotate(deg)
+    #input.mask = input.mask.rotate(deg)
 
     return input
