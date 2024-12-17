@@ -25,6 +25,8 @@ from global_parser import global_parser
 
 import matplotlib.pyplot as plt
 
+from CutMix import CutMix
+
 torch.manual_seed(42)
 
 def init_process_group(local_rank, world_size):
@@ -37,6 +39,8 @@ def init_process_group(local_rank, world_size):
 
 def main(local_rank, world_size):
     args = global_parser()
+    if args.cutmix:
+        print("Using CutMix with prob ", args.cutmix_prob)
     init_process_group(local_rank, world_size)
 
     train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
@@ -80,8 +84,6 @@ def main(local_rank, world_size):
             for k in x.keys():
                 x[k] = x[k].to(local_rank)
             if x["depth_values"].shape[0] != args.batch_size: continue # Hacky solution to deal with batch size issue
-
-            d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
             
             # Estimate GT normal and distance
 
@@ -90,6 +92,14 @@ def main(local_rank, world_size):
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
             
+            # CutMix
+            if args.cutmix:
+                if torch.rand(1) < args.cutmix_prob:
+                    x["pixel_values"], x["depth_values"], x["mask"], normal_gt = CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt)
+
+            # Forward pass
+            d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
+
             # Depth Loss
 
             loss_depth1_0 = silog_criterion(d1_list[0], depth_gt, x["mask"])
