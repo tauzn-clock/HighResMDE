@@ -4,7 +4,7 @@
 --test_csv /HighResMDE/src/nyu_test_v3.csv
 
 --batch_size 8
---model_size tiny16
+--model_size base
 
 --metric_cnt 9
 --metric_save_path metric.csv

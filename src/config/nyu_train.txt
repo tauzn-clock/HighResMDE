@@ -6,7 +6,7 @@
 --batch_size 6
 --width 640
 --height 480
---model_size base08
+--model_size tiny
 --var_focus 0.85
 --lr 2e-5
 --lr_decay 0.933
@@ -18,7 +18,7 @@
 --cutmix_prob 0.5
 
 
---loss_depth_weight 1
+--loss_depth_weight 5
 --loss_uncer_weight 1
 --loss_normal_weight 5
 --loss_dist_weight 0.25

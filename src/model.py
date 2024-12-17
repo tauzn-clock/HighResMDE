@@ -11,39 +11,37 @@ class ModelConfig():
     def __init__(self, version):
         super(ModelConfig, self).__init__()
         
-        if version[:-2] == 'base':
-            self.embed_dim = 128
-            self.depths = [2, 2, 18, 2]
-            self.num_heads = [4, 8, 16, 32]
+        if version == 'base':
             self.in_channels = [128, 256, 512, 1024]
             self.swinv2_pretrained_path = "microsoft/swinv2-base-patch4-window8-256"
-        elif version[:-2] == 'large':
-            self.embed_dim = 192
-            self.depths = [2, 2, 18, 2]
-            self.num_heads = [6, 12, 24, 48]
+        elif version == 'large':
             self.in_channels = [192, 384, 768, 1536]
             self.swinv2_pretrained_path = "microsoft/swinv2-large-patch4-window12-192-22k"
-        elif version[:-2] == 'tiny':
-            self.embed_dim = 96
-            self.depths = [2, 2, 6, 2]
-            self.num_heads = [3, 6, 12, 24]
+        elif version == 'tiny':
             self.in_channels = [96, 192, 384, 768]
             self.swinv2_pretrained_path = "microsoft/swinv2-tiny-patch4-window8-256"
 
         print(self.swinv2_pretrained_path)
             
-        self.win = int(version[-2:])
         self.crf_dims = [128, 256, 512, 1024]
         self.v_dims = [64, 128, 256, 512]
         
-        backbone_config = Swinv2Config(
-                embed_dim=self.embed_dim,
-                depths=self.depths,
-                num_heads=self.num_heads,
-                out_features=["stage1", "stage2", "stage3", "stage4"]
-                )
+        backbone_config = Swinv2Config.from_pretrained(self.swinv2_pretrained_path)
+        backbone_config.out_features = ["stage1", "stage2", "stage3", "stage4"]
         
         self.uper_config = UperNetConfig(backbone_config=backbone_config)
+
+        self.embed_dim = backbone_config.embed_dim
+        self.depths = backbone_config.depths
+        self.num_heads = backbone_config.num_heads
+        self.win = backbone_config.window_size
+
+        test_config = Swinv2Config(
+                            embed_dim=self.embed_dim,
+                            depths=self.depths,
+                            num_heads=self.num_heads,
+                            out_features=["stage1", "stage2", "stage3", "stage4"]
+                            )
 
 class Model(nn.Module):
     def __init__(self, config):        
