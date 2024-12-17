@@ -63,21 +63,19 @@ normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
 for i in range(len(d1_list)):
-    plt.imshow((d1_list[i][0]+d2_list[i][0]).cpu().detach().squeeze())
-    plt.savefig(f"output_image_{i}.png", bbox_inches='tight', dpi=300)
+    plt.imsave(f"output_image_{i}.png", (d1_list[i][0]+d2_list[i][0]).cpu().detach().squeeze())
 
 norm_est_img = (norm_est[0] + 1)/2
 print(norm_est_img.shape)
 print(norm_est.max(), norm_est.min())
-plt.imshow(norm_est_img.permute(1,2,0).cpu().detach().squeeze())
-plt.savefig('normal_est.png')
+norm_est_img = norm_est_img.permute(1,2,0).cpu().detach().numpy()
+plt.imsave("normal_est.png", norm_est_img)
 
 dist_est_img = dist_est[0]/dist_est[0].max()
-plt.imshow(dist_est_img.permute(1,2,0).cpu().detach().squeeze())
-plt.savefig('dist_est.png')
+plt.imsave("dist_est.png", dist_est_img.permute(1,2,0).cpu().detach().squeeze())
 
 normal_gt_img = (normal_gt[0] +1)/2
 print(normal_gt_img.shape)
 print(normal_gt.max(), normal_gt.min())
-plt.imshow(normal_gt_img.permute(1,2,0).cpu().detach().squeeze())
-plt.savefig('normal_gt.png')
+normal_gt_img = normal_gt_img.permute(1,2,0).cpu().detach().numpy()
+plt.imsave("normal_gt.png", normal_gt_img)
