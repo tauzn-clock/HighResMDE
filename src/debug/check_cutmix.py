@@ -27,12 +27,13 @@ import matplotlib.pyplot as plt
 from CutMix import CutMix
 
 args = global_parser()
-local_rank = "cuda"
+local_rank = "cpu"
 
 train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
 train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True)
 
-normal_estimation = Depth2Normal().to(local_rank)
+normal_estimation = Depth2Normal(local_rank).to(local_rank)
+dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
 
 loop = tqdm.tqdm(train_dataloader, unit="batch")
 for itr, x in enumerate(loop):
@@ -42,10 +43,11 @@ for itr, x in enumerate(loop):
     depth_gt = x["depth_values"] #Unit: m
     normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
     normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
+    dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
     break
 
-x["pixel_values"], x["depth_values"], x["mask"], normal_gt = CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt)
+x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt= CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
 
 img = x["pixel_values"][0].cpu().numpy().transpose((1,2,0))
 depth = x["depth_values"][0].cpu().numpy().squeeze()

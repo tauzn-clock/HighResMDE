@@ -73,7 +73,7 @@ def main(local_rank, world_size):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
     dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
-    normal_estimation = Depth2Normal().to(local_rank)
+    normal_estimation = Depth2Normal(local_rank).to(local_rank)
 
     for epoch in range(args.total_epoch):
         model.train()

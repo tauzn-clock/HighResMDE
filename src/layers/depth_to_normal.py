@@ -9,7 +9,7 @@ class Backprojection(nn.Module):
     Attributes
         xy (Nx3x(HxW)): homogeneous pixel coordinates on regular grid
     """
-    def __init__(self, height, width):
+    def __init__(self, height, width, device):
         """
         Args:
             height (int): image height
@@ -19,16 +19,17 @@ class Backprojection(nn.Module):
 
         self.height = height
         self.width = width
+        self.device = device
 
         # generate regular grid
         meshgrid = np.meshgrid(range(self.width), range(self.height), indexing='xy')
         id_coords = np.stack(meshgrid, axis=0).astype(np.float32)
-        id_coords = torch.tensor(id_coords, device="cuda")
+        id_coords = torch.tensor(id_coords, device=self.device)
 
         # generate homogeneous pixel coordinates
         # self.ones = nn.Parameter(torch.ones(1, 1, self.height * self.width),
         #                          requires_grad=False)
-        ones = torch.ones(1, 1, self.height * self.width, device="cuda")
+        ones = torch.ones(1, 1, self.height * self.width, device=self.device)
         xy = torch.unsqueeze(
             torch.stack([id_coords[0].view(-1), id_coords[1].view(-1)], 0),
             0
@@ -176,13 +177,14 @@ def get_surface_normalv2(xyz, patch_size=5, mask_valid=None):
 class Depth2Normal(nn.Module):
     """Layer to compute surface normal from depth map
     """
-    def __init__(self,):
+    def __init__(self, device):
         """
         Args:
             height (int): image height
             width (int): image width
         """
         super(Depth2Normal, self).__init__()
+        self.device = device
     
     def init_img_coor(self, height, width):
         """
@@ -190,8 +192,8 @@ class Depth2Normal(nn.Module):
             height (int): image height
             width (int): image width
         """
-        y, x = torch.meshgrid([torch.arange(0, height, dtype=torch.float32, device="cuda"),
-                               torch.arange(0, width, dtype=torch.float32, device="cuda")], indexing='ij')
+        y, x = torch.meshgrid([torch.arange(0, height, dtype=torch.float32, device=self.device),
+                               torch.arange(0, width, dtype=torch.float32, device=self.device)], indexing='ij')
         meshgrid = torch.stack((x, y))
         
         # # generate regular grid
@@ -200,7 +202,7 @@ class Depth2Normal(nn.Module):
         # id_coords = torch.tensor(id_coords)
 
         # generate homogeneous pixel coordinates
-        ones = torch.ones((1, 1, height * width), device="cuda")
+        ones = torch.ones((1, 1, height * width), device=self.device)
         # xy = torch.unsqueeze(
         #     torch.stack([x.reshape(-1), y.reshape(-1)], 0),
         #     0

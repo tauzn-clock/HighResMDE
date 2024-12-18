@@ -4,11 +4,11 @@ import torch
 def CutMix(img, depth, mask, normal, dist):
     B, _, H, W = img.shape
 
-    top = np.random.randint(int(0.1 * H), int(0.3 * H))
-    left = np.random.randint(int(0.1 * W), int(0.3 * W))
+    top = np.random.randint(int(0.15 * H), int(0.35 * H))
+    left = np.random.randint(int(0.15 * W), int(0.35 * W))
 
-    bottom = np.random.randint(int(0.7 * H), int(0.9 * H))
-    right = np.random.randint(int(0.7 * W), int(0.9 * W))
+    bottom = np.random.randint(int(0.65 * H), int(0.85 * H))
+    right = np.random.randint(int(0.65 * W), int(0.85 * W))
 
     img_a = img.clone()
     depth_a = depth.clone()

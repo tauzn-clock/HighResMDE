@@ -1,9 +1,9 @@
---train_dir /scratchdata/nyu_huggingface/
---train_csv /HighResMDE/src/nyu_train_v3.csv
---test_dir /scratchdata/nyu_huggingface/
---test_csv /HighResMDE/src/nyu_test_v3.csv
+--train_dir /scratchdata/nyu_depth_v2/sync
+--train_csv /HighResMDE/src/nddepth_train.csv
+--test_dir /scratchdata/nyu_depth_v2/official_splits/test/
+--test_csv /HighResMDE/src/nddepth_test.csv
 
---batch_size 3
+--batch_size 4
 --width 640
 --height 480
 --model_size large
@@ -14,10 +14,10 @@
 --normal_blur 11.0
 --total_epoch 20
 --initial_epoch 4
---cutmix_prob 0.75
+--cutmix_prob 0.5
 
 
---loss_depth_weight 20
+--loss_depth_weight 5
 --loss_uncer_weight 1
 --loss_normal_weight 5
 --loss_dist_weight 0.25

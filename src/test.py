@@ -43,13 +43,13 @@ for param in model.backbone.backbone.parameters():  # 'backbone' is typically wh
 
 silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
 dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
-normal_estimation = Depth2Normal().to(local_rank)
+normal_estimation = Depth2Normal(local_rank).to(local_rank)
 
 model.eval()
 
 loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {1}", unit="batch")
 for itr, x in enumerate(loop):
-    break
+    if itr==10: break
 for k in x.keys():
     x[k] = x[k].to(local_rank)
 d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)
