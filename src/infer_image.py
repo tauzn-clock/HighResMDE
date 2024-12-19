@@ -29,7 +29,6 @@ def infer_image(model, input):
 
     input["pixel_values"] = torch.flip(input["pixel_values"],[3])
     plt.imsave("input_image.png", input["pixel_values"][0].permute(1,2,0).cpu().detach().numpy())
-    print(input["pixel_values"].shape)
     d1_list_inverted, _, d2_list_inverted, _, _, _ = model(input)
     depth_inverted = (d1_list_inverted[-1] + d2_list_inverted[-1])/2
     depth_inverted = torch.flip(depth_inverted,[3])

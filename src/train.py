@@ -22,10 +22,12 @@ from layers.depth_to_normal import Depth2Normal
 from loss import silog_loss, get_metrics
 from segmentation import compute_seg, get_smooth_ND
 from global_parser import global_parser
+from eval_metric import eval
 
 import matplotlib.pyplot as plt
 
 from CutMix import CutMix, CutFlip
+
 
 torch.manual_seed(42)
 
@@ -164,29 +166,7 @@ def main(local_rank, world_size):
         print(param_group['lr'])
         torch.save(model.module.state_dict(), args.model_save_path)
         
-        model.eval()
-        torch.cuda.empty_cache()
-        tot_metric = [0 for _ in range(args.metric_cnt)]
-        cnt = 0
-        with torch.no_grad():
-            for _, x in enumerate(tqdm.tqdm(test_dataloader)):
-                for k in x.keys():
-                    x[k] = x[k].to(local_rank)
-                    
-                d1_list, _, d2_list, _, _, _ = model(x)
-                
-                depth_gt = x["depth_values"]
-                d1 = d1_list[-1]
-                d2 = d2_list[-1]
-                
-                for b in range(x["max_depth"].shape[0]):
-                    metric = get_metrics(depth_gt[b], ((d1 + d2)/2)[b], x["mask"][b])
-                    assert len(metric) == args.metric_cnt
-                    for i in range(args.metric_cnt): tot_metric[i] += metric[i].cpu().detach().item()
-                    cnt+=1
-
-        for i in range(args.metric_cnt): tot_metric[i]/=cnt
-        print(tot_metric)
+        tot_metric = eval(model, args, local_rank, test_dataloader)
         with open(args.metric_save_path, mode='a', newline='') as file:  # Open in append mode
             writer = csv.writer(file)
             writer.writerow(tot_metric)  # Write the new row only
