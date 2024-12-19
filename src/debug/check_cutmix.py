@@ -24,7 +24,7 @@ from segmentation import compute_seg, get_smooth_ND
 from global_parser import global_parser
 
 import matplotlib.pyplot as plt
-from CutMix import CutMix
+from CutMix import CutMix, CutFlip
 
 args = global_parser()
 local_rank = "cpu"
@@ -47,7 +47,7 @@ for itr, x in enumerate(loop):
 
     break
 
-x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt= CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
+x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt= CutFlip(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
 
 img = x["pixel_values"][0].cpu().numpy().transpose((1,2,0))
 depth = x["depth_values"][0].cpu().numpy().squeeze()

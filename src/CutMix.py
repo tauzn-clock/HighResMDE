@@ -24,3 +24,15 @@ def CutMix(img, depth, mask, normal, dist):
         dist_a[b, :, top:bottom, left:right] = dist[(b+1)%B, :, top:bottom, left:right]
         
     return img_a, depth_a, mask_a, normal_a, dist_a
+
+def CutFlip(img, depth, mask, normal, dist):
+    B, _, H, W = img.shape
+
+    height = np.random.randint(int(0.2*H), int(0.8*H))
+
+    img = torch.cat((img[:,:,height:,:], img[:,:,:height,:]), dim=2)
+    depth = torch.cat((depth[:,:,height:,:], depth[:,:,:height,:]), dim=2)
+    mask = torch.cat((mask[:,:,height:,:], mask[:,:,:height,:]), dim=2)
+    normal = torch.cat((normal[:,:,height:,:], normal[:,:,:height,:]), dim=2)
+
+    return img, depth, mask, normal, dist
