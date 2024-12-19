@@ -25,7 +25,7 @@ from global_parser import global_parser
 
 import matplotlib.pyplot as plt
 
-from CutMix import CutMix
+from CutMix import CutMix, CutFlip
 
 torch.manual_seed(42)
 
@@ -40,7 +40,9 @@ def init_process_group(local_rank, world_size):
 def main(local_rank, world_size):
     args = global_parser()
     if args.cutmix:
-        print("Using CutMix with prob ", args.cutmix_prob)
+        print("Using CutMix with prob ", args.cut_prob)
+    if args.cutflip:
+        print("Using CutFlip with prob ", args.cut_prob)
     init_process_group(local_rank, world_size)
 
     train_dataset = BaseImageDataset('train', NYUImageData, args.train_dir, args.train_csv)
@@ -57,7 +59,6 @@ def main(local_rank, world_size):
         writer.writerows(csv_file)
 
     config = ModelConfig(args.model_size)
-    if not args.swinv2_specific_path is None: config.swinv2_pretrained_path = args.swinv2_specific_path
     model = Model(config).to(local_rank)
     if not args.pretrained_model is None: 
         print("Using ", args.pretrained_model)
@@ -94,8 +95,13 @@ def main(local_rank, world_size):
             
             # CutMix
             if args.cutmix:
-                if torch.rand(1) < args.cutmix_prob:
+                if torch.rand(1) < args.cut_prob:
                     x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt = CutMix(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
+
+            # CutFlip
+            if args.cutflip:
+                if torch.rand(1) < args.cut_prob:
+                    x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt = CutFlip(x["pixel_values"], x["depth_values"], x["mask"], normal_gt, dist_gt)
 
             # Forward pass
             d1_list, u1, d2_list, u2, norm_est, dist_est = model(x)

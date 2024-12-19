@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import Swinv2Config, UperNetConfig, UperNetForSemanticSegmentation
+from transformers import SwinConfig, Swinv2Config, UperNetConfig, UperNetForSemanticSegmentation
 from layers.newcrf_layers import NewCRFChain
 from layers.BasicUpdateBlockDepth import BasicUpdateBlockDepth
 from layers.DN_to_depth import DN_to_depth
@@ -35,13 +35,6 @@ class ModelConfig():
         self.depths = backbone_config.depths
         self.num_heads = backbone_config.num_heads
         self.win = backbone_config.window_size
-
-        test_config = Swinv2Config(
-                            embed_dim=self.embed_dim,
-                            depths=self.depths,
-                            num_heads=self.num_heads,
-                            out_features=["stage1", "stage2", "stage3", "stage4"]
-                            )
 
 class Model(nn.Module):
     def __init__(self, config):        
