@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import SwinConfig, Swinv2Config, UperNetConfig, UperNetForSemanticSegmentation
+from transformers import Swinv2Model, Swinv2Config
 from layers.newcrf_layers import NewCRFChain
 from layers.BasicUpdateBlockDepth import BasicUpdateBlockDepth
 from layers.DN_to_depth import DN_to_depth
+from layers.uper_crf_head import PSP
 
 class ModelConfig():
     def __init__(self, version):
@@ -29,13 +30,25 @@ class ModelConfig():
         backbone_config = Swinv2Config.from_pretrained(self.swinv2_pretrained_path)
         backbone_config.out_features = ["stage1", "stage2", "stage3", "stage4"]
         
-        self.uper_config = UperNetConfig(backbone_config=backbone_config)
-        self.uper_config.se_auxiliary_head = False
+        #self.uper_config = UperNetConfig(backbone_config=backbone_config)
+        #self.uper_config.se_auxiliary_head = False
 
         self.embed_dim = backbone_config.embed_dim
         self.depths = backbone_config.depths
         self.num_heads = backbone_config.num_heads
         self.win = backbone_config.window_size
+
+        norm_cfg = dict(type='BN', requires_grad=True)
+        self.decoder_cfg = dict(
+            in_channels=self.in_channels,
+            in_index=[0, 1, 2, 3],
+            pool_scales=(1, 2, 3, 6),
+            channels=512,
+            dropout_ratio=0.0,
+            num_classes=32,
+            norm_cfg=norm_cfg,
+            align_corners=False
+        )
 
 class Model(nn.Module):
     def __init__(self, config):        
@@ -43,7 +56,7 @@ class Model(nn.Module):
         
         self.config = config
         
-
+        """
         #Hacky way to get to uperhead decode_head
         self.upernet1 = UperNetForSemanticSegmentation(self.config.uper_config)
         self.upernet2 = UperNetForSemanticSegmentation(self.config.uper_config)
@@ -52,6 +65,11 @@ class Model(nn.Module):
         self.decoder1 = self.upernet1.decode_head
         self.decoder2 = self.upernet2.decode_head
         del self.upernet1, self.upernet2
+        """
+
+        self.backbone = Swinv2Model.from_pretrained(self.config.swinv2_pretrained_path, add_pooling_layer=False)
+        self.decoder1 = PSP(**self.config.decoder_cfg)
+        self.decoder2 = PSP(**self.config.decoder_cfg)
 
         self.crf_chain_1 = NewCRFChain(self.config.in_channels, self.config.crf_dims, self.config.v_dims, self.config.win)
         self.depth_head = DistanceHead(self.config.crf_dims[0])
@@ -67,10 +85,12 @@ class Model(nn.Module):
         #self.dn_to_depth = DN_to_depth(self.config.batch_size, self.config.height, self.config.width)
 
     def forward(self, x):
-        outputs = self.backbone.forward_with_filtered_kwargs(**x)
+        #outputs = self.backbone.forward_with_filtered_kwargs(**x)
+        #features = outputs.feature_maps
         
-        features = outputs.feature_maps
-
+        features = self.backbone(x["pixel_values"], 
+                            output_hidden_states=True)["reshaped_hidden_states"] # DX: Get Features from SWIM backbone
+        
         psp_out_1 =self.decoder1.psp_forward(features)
         psp_out_2 =self.decoder2.psp_forward(features)
         
