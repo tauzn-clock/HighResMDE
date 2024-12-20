@@ -30,6 +30,7 @@ class ModelConfig():
         backbone_config.out_features = ["stage1", "stage2", "stage3", "stage4"]
         
         self.uper_config = UperNetConfig(backbone_config=backbone_config)
+        self.uper_config.se_auxiliary_head = False
 
         self.embed_dim = backbone_config.embed_dim
         self.depths = backbone_config.depths
@@ -42,10 +43,16 @@ class Model(nn.Module):
         
         self.config = config
         
-        self.backbone = UperNetForSemanticSegmentation(self.config.uper_config)
 
-        #self.backbone.eval() # TODO: Necessary to allow evaluation as some layer requies mean??
-    
+        #Hacky way to get to uperhead decode_head
+        self.upernet1 = UperNetForSemanticSegmentation(self.config.uper_config)
+        self.upernet2 = UperNetForSemanticSegmentation(self.config.uper_config)
+        
+        self.backbone = self.upernet1.backbone
+        self.decoder1 = self.upernet1.decode_head
+        self.decoder2 = self.upernet2.decode_head
+        del self.upernet1, self.upernet2
+
         self.crf_chain_1 = NewCRFChain(self.config.in_channels, self.config.crf_dims, self.config.v_dims, self.config.win)
         self.depth_head = DistanceHead(self.config.crf_dims[0])
         self.uncer_head_1 = UncerHead(self.config.crf_dims[0])
@@ -60,19 +67,20 @@ class Model(nn.Module):
         #self.dn_to_depth = DN_to_depth(self.config.batch_size, self.config.height, self.config.width)
 
     def forward(self, x):
-        outputs = self.backbone.backbone.forward_with_filtered_kwargs(**x)
+        outputs = self.backbone.forward_with_filtered_kwargs(**x)
         
         features = outputs.feature_maps
 
-        psp_out =self.backbone.decode_head.psp_forward(features)
+        psp_out_1 =self.decoder1.psp_forward(features)
+        psp_out_2 =self.decoder2.psp_forward(features)
         
         # Depth
-        crf_out_1 = self.crf_chain_1(psp_out, features)     
+        crf_out_1 = self.crf_chain_1(psp_out_1, features)     
         d1 = self.depth_head(crf_out_1) # Unit: m but scaled to [0,1]
         u1 = self.uncer_head_1(crf_out_1)
         
         # Normal Distance
-        crf_out_2 = self.crf_chain_2(psp_out, features)
+        crf_out_2 = self.crf_chain_2(psp_out_2, features)
         distance = self.dist_head(crf_out_2) #Unit: m but scaled to [0,1]
         n2 = self.normal_head(crf_out_2)
 
