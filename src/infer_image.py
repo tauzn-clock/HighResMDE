@@ -58,7 +58,7 @@ if __name__ == "__main__":
     torch.cuda.empty_cache()
     #model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
-    for param in model.backbone.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
+    for param in model.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
         param.requires_grad = False
     #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 

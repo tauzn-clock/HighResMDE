@@ -13,6 +13,8 @@ from loss import silog_loss, get_metrics
 from global_parser import global_parser
 from infer_image import infer_image
 
+import matplotlib.pyplot as plt
+
 def eval(model, args, local_rank, test_dataloader):
     model.eval()
     torch.cuda.empty_cache()
@@ -34,6 +36,9 @@ def eval(model, args, local_rank, test_dataloader):
 
     for i in range(args.metric_cnt): tot_metric[i]/=cnt
     print(tot_metric)
+
+    print("Save test image")
+    plt.imsave("best_depth_est.png", depth[0].cpu().detach().squeeze())
 
     return tot_metric
 
