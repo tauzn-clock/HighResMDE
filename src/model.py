@@ -29,9 +29,6 @@ class ModelConfig():
         
         backbone_config = Swinv2Config.from_pretrained(self.swinv2_pretrained_path)
         backbone_config.out_features = ["stage1", "stage2", "stage3", "stage4"]
-        
-        #self.uper_config = UperNetConfig(backbone_config=backbone_config)
-        #self.uper_config.se_auxiliary_head = False
 
         self.embed_dim = backbone_config.embed_dim
         self.depths = backbone_config.depths
@@ -55,17 +52,6 @@ class Model(nn.Module):
         super(Model, self).__init__()
         
         self.config = config
-        
-        """
-        #Hacky way to get to uperhead decode_head
-        self.upernet1 = UperNetForSemanticSegmentation(self.config.uper_config)
-        self.upernet2 = UperNetForSemanticSegmentation(self.config.uper_config)
-        
-        self.backbone = self.upernet1.backbone
-        self.decoder1 = self.upernet1.decode_head
-        self.decoder2 = self.upernet2.decode_head
-        del self.upernet1, self.upernet2
-        """
 
         self.backbone = Swinv2Model.from_pretrained(self.config.swinv2_pretrained_path, add_pooling_layer=False)
         self.decoder1 = PSP(**self.config.decoder_cfg)
@@ -82,12 +68,8 @@ class Model(nn.Module):
         
         self.update = BasicUpdateBlockDepth(context_dim=self.config.in_channels[0])
 
-        #self.dn_to_depth = DN_to_depth(self.config.batch_size, self.config.height, self.config.width)
-
     def forward(self, x):
-        #outputs = self.backbone.forward_with_filtered_kwargs(**x)
-        #features = outputs.feature_maps
-        
+
         features = self.backbone(x["pixel_values"], 
                             output_hidden_states=True)["reshaped_hidden_states"] # DX: Get Features from SWIM backbone
         

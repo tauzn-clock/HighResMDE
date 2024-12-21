@@ -66,7 +66,6 @@ def main(local_rank, world_size):
         print("Using ", args.pretrained_model)
         model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
         torch.cuda.empty_cache()
-    #model.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only
     if not args.encoder_grad:
         for param in model.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
