@@ -90,9 +90,9 @@ for k in range(7):
     tmp_mask = np.zeros(mask.shape)
     store_inliers = np.zeros(mask.shape).astype(int)
     
-    for i in inliers:
-        tmp_mask[index[i][1], index[i][0]] = 1
-        store_inliers[index[i][1], index[i][0]] = i
+    for inl in inliers:
+        tmp_mask[index[inl][1], index[inl][0]] = 1
+        store_inliers[index[inl][1], index[inl][0]] = inl
 
     labeled_mask, num_features = ndimage.label(tmp_mask)
 
@@ -102,8 +102,8 @@ for k in range(7):
 
     deleted_pts = store_inliers[largest_region_mask]
 
-    for i in deleted_pts:
-        mask[index[i][1], index[i][0]] = k+1
+    for d in deleted_pts:
+        mask[index[d][1], index[d][0]] = k+1
     
     new_coord_3d = np.delete(coord_3d, deleted_pts, axis=0)
     new_index = np.delete(index, deleted_pts, axis=0)
@@ -114,20 +114,35 @@ for k in range(7):
     pcd.points = o3d.utility.Vector3dVector(coord_3d)
     #o3d.visualization.draw_geometries([pcd])
 
-plane_params = [list(plane_params[i]) for i in range(7)]
+plane_params = [list(plane_params[k]) for k in range(7)]
 
 json_file = {}
 json_file['planes_param'] = plane_params
 json_file['mask'] = mask.tolist()
 
-with open('plane.json', 'w') as f:
+print(len(data))
+print(data[i][1])
+
+TARGET_PATH = os.path.join(DIR_PATH, "planes_8", data[i][1])
+TARGET_PATH = TARGET_PATH[:-4] + ".json"
+print(TARGET_PATH)
+
+def check_directories_exist(file_path):
+    # Split the file path into directories
+    directories = os.path.normpath(file_path).split(os.sep)
+    
+    # Iterate through all directory levels
+    for i in range(2, len(directories)):
+        current_dir = os.sep.join(directories[:i])  # Get the path for the current level
+        
+        # Check if the directory exists
+        if os.path.isdir(current_dir):
+            print(f"Directory exists: {current_dir}")
+        else:
+            print(f"Directory does not exist: {current_dir}")
+            os.mkdir(current_dir)
+
+check_directories_exist(TARGET_PATH)
+
+with open(TARGET_PATH, 'w') as f:
     json.dump(json_file, f, indent=4)
-
-
-with open('plane.json', 'r') as f:
-    data = json.load(f)
-
-print(data.keys())
-
-mask = np.array(data['mask'])
-plt.imsave("test_mask.png", mask)
