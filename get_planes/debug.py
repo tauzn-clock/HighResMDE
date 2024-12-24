@@ -51,9 +51,9 @@ def check_directories_exist(file_path):
 DIR_PATH = "/scratchdata/nyu_depth_v2/sync"
 FILE_PATH = "/HighResMDE/src/nddepth_train.csv"
 
-DISTANCE_THESHOLD=0.02
+DISTANCE_THESHOLD=0.05
 NUM_ITERATION=10000
-PROB=0.9995
+PROB=0.999
 
 data = []
 
@@ -132,6 +132,8 @@ for i in range(len(data)):
     json_file = {}
     json_file['planes_param'] = plane_params
     json_file['mask'] = mask.tolist()
+
+    plt.imsave("mask.png", mask)
 
     print(len(data))
     print(data[i][1])
