@@ -17,7 +17,7 @@ with open(FILE_PATH, 'r') as f:
 
         data.append(row)
 
-i = 0
+i = 14320
 
 intrinsic = np.array([[data[i][2]/1000, 0, data[i][4], 0],
                       [0, data[i][3]/1000, data[i][5], 0],
@@ -57,6 +57,11 @@ def depth_to_pcd(depth_image, intrinsic, ):
 
 cood_3d = depth_to_pcd(depth, intrinsic)
 
-pcd = o3d.geometry.PointCloud()
-pcd.points = o3d.utility.Vector3dVector(cood_3d)
-o3d.visualization.draw_geometries([pcd])
+print(cood_3d[:4000, :].shape)
+
+# Create an Open3D point cloud object
+point_cloud = o3d.geometry.PointCloud()
+
+# Assign the NumPy array to the point cloud
+point_cloud.points = o3d.utility.Vector3dVector(cood_3d)
+#o3d.visualization.draw_geometries([pcd])
