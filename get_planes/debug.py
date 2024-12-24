@@ -1,4 +1,5 @@
 import os
+import json
 import csv
 import numpy as np
 from PIL import Image
@@ -98,7 +99,6 @@ for k in range(7):
     region_sizes = ndimage.sum(tmp_mask, labeled_mask, range(1, num_features + 1))
     largest_region_label = np.argmax(region_sizes) + 1 
     largest_region_mask = labeled_mask == largest_region_label
-    plt.imsave("largest.png", largest_region_mask)
 
     deleted_pts = store_inliers[largest_region_mask]
 
@@ -114,6 +114,20 @@ for k in range(7):
     pcd.points = o3d.utility.Vector3dVector(coord_3d)
     #o3d.visualization.draw_geometries([pcd])
 
-plt.imsave("mask.png", mask)
+plane_params = [list(plane_params[i]) for i in range(7)]
+
+json_file = {}
+json_file['planes_param'] = plane_params
+json_file['mask'] = mask.tolist()
+
+with open('plane.json', 'w') as f:
+    json.dump(json_file, f, indent=4)
 
 
+with open('plane.json', 'r') as f:
+    data = json.load(f)
+
+print(data.keys())
+
+mask = np.array(data['mask'])
+plt.imsave("test_mask.png", mask)
