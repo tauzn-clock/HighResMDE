@@ -54,7 +54,7 @@ FILE_PATH = "/HighResMDE/src/nddepth_train.csv"
 
 DISTANCE_THESHOLD=0.05
 NUM_ITERATION=10000
-PROB=0.999
+PROB=0.9999
 
 data = []
 
