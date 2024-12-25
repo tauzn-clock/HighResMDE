@@ -6,6 +6,7 @@ from PIL import Image
 import open3d as o3d
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndimage
+import cv2
 
 def depth_to_pcd(depth_image, intrinsic, ):
     # Get dimensions of the depth image
@@ -131,7 +132,7 @@ for i in range(len(data)):
 
     json_file = {}
     json_file['planes_param'] = plane_params
-    json_file['mask'] = mask.tolist()
+    #json_file['mask'] = mask.tolist()
 
     plt.imsave("mask.png", mask)
 
@@ -139,10 +140,14 @@ for i in range(len(data)):
     print(data[i][1])
 
     TARGET_PATH = os.path.join(DIR_PATH, "planes_8", data[i][1])
-    TARGET_PATH = TARGET_PATH[:-4] + ".json"
+    TARGET_JSON_PATH = TARGET_PATH[:-4] + ".json"
+    TARGET_PNG_PATH = TARGET_PATH[:-4] + ".png"
     print(TARGET_PATH)
 
     check_directories_exist(TARGET_PATH)
 
-    with open(TARGET_PATH, 'w') as f:
+    with open(TARGET_JSON_PATH, 'w') as f:
         json.dump(json_file, f, indent=4)
+    
+    # Save the mask as a PNG image
+    cv2.imwrite(TARGET_PNG_PATH, mask)
