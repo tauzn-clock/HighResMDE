@@ -1,4 +1,5 @@
 import csv
+import os
 
 TRAIN_CSV = "/HighResMDE/nddepth_custom/nyudepthv2_train_files_with_gt_dense.txt"
 TEST_CSV = "/HighResMDE/nddepth_custom/nyudepthv2_test_files_with_gt.txt"
@@ -18,7 +19,10 @@ def get_csv(csv_file):
     with open(csv_file, 'r') as file:
         reader = csv.reader(file, delimiter=' ')
         for row in reader:
-            new_entry = [row[0], row[1], fx, fy, cx, cy, depth_scale, depth_max]
+            TARGET_PATH = os.path.join("planes_8", row[1])
+            TARGET_JSON_PATH = TARGET_PATH[:-4] + ".json"
+            TARGET_PNG_PATH = TARGET_PATH[:-4] + ".png"
+            new_entry = [row[0], row[1], fx, fy, cx, cy, depth_scale, depth_max,TARGET_JSON_PATH,TARGET_PNG_PATH]
             data.append(new_entry)
 
     return data
