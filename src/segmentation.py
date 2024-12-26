@@ -90,5 +90,22 @@ def get_smooth_ND(normal, distance, planar_mask):
     
     return loss_grad_normal, loss_grad_distance
 
+def get_dist_laplace_kernel(dist):
 
+    dist_pad = torch.nn.functional.pad(dist, (1, 1, 1, 1))
+    dist_laplace = -4 * dist_pad[:,:,1:-1,1:-1]
+    dist_laplace += dist_pad[:, :, 2:, 1:-1]
+    dist_laplace += dist_pad[:, :, :-2, 1:-1]
+    dist_laplace += dist_pad[:, :, 1:-1, 2:]
+    dist_laplace += dist_pad[:, :, 1:-1, :-2]
+    dist_laplace = torch.abs(dist_laplace)
 
+    return dist_laplace
+
+def get_normal_laplace_kernel(normal):
+    normal_pad = torch.nn.functional.pad(normal, (1, 1, 1, 1))
+    normal_laplace = 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,2:,1:-1]),axis=1).unsqueeze(1)
+    normal_laplace += 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,:-2,1:-1]),axis=1).unsqueeze(1)
+    normal_laplace += 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,1:-1,2:]),axis=1).unsqueeze(1)
+    normal_laplace += 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,1:-1,:-2]),axis=1).unsqueeze(1)
+    return normal_laplace

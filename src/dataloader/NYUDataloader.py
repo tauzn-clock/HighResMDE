@@ -44,7 +44,13 @@ class NYUImageData(BaseImageData):
         with open(os.path.join(root,args[8]), 'r') as file:
             self.planes_json = json.load(file)
 
-        self.plane_params = np.array(self.planes_json['planes_param'])    
+        self.plane_params = self.planes_json['planes_param']
+
+        while len(self.plane_params) < 7:
+            self.plane_params.append(self.plane_params[0])
+
+        self.plane_params = np.array(self.plane_params)
+
         for i in range(len(self.plane_params)):
             if self.plane_params[i][3] < 0:
                 self.plane_params[i] = -self.plane_params[i]

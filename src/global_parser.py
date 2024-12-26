@@ -44,6 +44,8 @@ def global_parser():
     parser.add_argument('--loss_uncer_weight', type=int, default=1)
     parser.add_argument('--loss_normal_weight', type=int, default=5)
     parser.add_argument('--loss_dist_weight', type=float, default=0.25)
+    parser.add_argument('--loss_seg_dist_weight', type=float, default=1)
+    parser.add_argument('--loss_seg_norm_weight', type=float, default=10)
     parser.add_argument('--model_save_path', type=str, default="model.pth")
 
     parser.add_argument('--metric_cnt', type=int, default=9)
