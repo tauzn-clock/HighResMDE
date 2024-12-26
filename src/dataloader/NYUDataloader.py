@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import os
 import cv2
 import random
+import json
 
 from dataloader.BaseDataloader import BaseImageData
 
@@ -39,6 +40,15 @@ class NYUImageData(BaseImageData):
 
         self.depth_rescale = float(args[6])
         self.depth_max = float(args[7])
+
+        with open(os.path.join(root,args[8]), 'r') as file:
+            self.planes_json = json.load(file)
+
+        self.plane_params = np.array(self.planes_json['planes_param'])    
+        for i in range(len(self.plane_params)):
+            if self.plane_params[i][3] < 0:
+                self.plane_params[i] = -self.plane_params[i]
+        self.plane_values = Image.open(os.path.join(root, args[9]))
 
         H, W = self.pixel_values.size
 
@@ -86,6 +96,8 @@ def preprocess_transform(input):
     output["camera_intrinsics"] = input.camera_intrinsics
     output["camera_intrinsics_inverted"] = input.camera_intrinsics_inverted
     output["max_depth"] = input.depth_max #Unit: m
+    output["plane_params"] = torch.Tensor(input.plane_params)
+    output["plane_values"] = torch.Tensor(np.array(input.plane_values)).unsqueeze(0)
 
     return output
 
@@ -106,6 +118,8 @@ def train_transform(input):
         input.pixel_values = input.pixel_values.transpose(Image.FLIP_LEFT_RIGHT)
         input.depth_values = input.depth_values.transpose(Image.FLIP_LEFT_RIGHT)
         input.mask = input.mask.transpose(Image.FLIP_LEFT_RIGHT)
+        input.plane_params[:,0] = -input.plane_params[:,0]
+        input.plane_values = input.plane_values.transpose(Image.FLIP_LEFT_RIGHT)
 
     # Rotate
     #deg = random.uniform(-5,5)
