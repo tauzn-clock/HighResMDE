@@ -125,10 +125,12 @@ for i in range(len(data)):
         coord_3d = new_coord_3d
         index = new_index
 
+        if len(coord_3d) <= 3: break
+
         pcd.points = o3d.utility.Vector3dVector(coord_3d)
         #o3d.visualization.draw_geometries([pcd])
 
-    plane_params = [list(plane_params[k]) for k in range(7)]
+    plane_params = [list(plane_params[k]) for k in range(len(plane_params))]
 
     json_file = {}
     json_file['planes_param'] = plane_params
