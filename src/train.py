@@ -20,7 +20,7 @@ from dataloader.NYUDataloader import NYUImageData
 from layers.DN_to_distance import DN_to_distance
 from layers.depth_to_normal import Depth2Normal
 from loss import silog_loss, get_metrics
-from segmentation import compute_seg, get_smooth_ND, get_dist_laplace_kernel, get_normal_laplace_kernel
+from segmentation import compute_seg, get_smooth_ND, get_dist_laplace_kernel, get_normal_laplace_kernel, get_grad_loss
 from global_parser import global_parser
 from eval_metric import eval
 
@@ -157,7 +157,10 @@ def main(local_rank, world_size):
 
             #loss_seg = 0.01 * (loss_grad_distance + loss_grad_normal)
 
-            loss = loss_depth + loss_uncer + loss_normal + loss_distance + loss_seg_dist + loss_seg_norm
+            # Grad Loss
+            loss_grad = 100 * get_grad_loss(depth_gt, (d1_list[0]+d2_list[0])/2)[x["mask"]].mean()
+
+            loss = loss_depth + loss_uncer + loss_normal + loss_distance + loss_seg_dist + loss_seg_norm + loss_grad
             loss = loss.mean()
 
             loss.backward()
@@ -171,6 +174,7 @@ def main(local_rank, world_size):
             custom_message += "Dist: {:.3g}, ".format(loss_distance.item())
             custom_message += "Seg D: {:.3g}, ".format(loss_seg_dist.item())
             custom_message += "Seg N: {:.3g}".format(loss_seg_norm.item())
+            custom_message += "Grad: {:.3g}".format(loss_grad.item())
             loop.set_postfix(message=custom_message)
         
         # Reduce learning rate

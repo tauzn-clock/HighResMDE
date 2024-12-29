@@ -105,3 +105,15 @@ def get_normal_laplace_kernel(normal):
     normal_laplace += 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,1:-1,2:]),axis=1).unsqueeze(1)
     normal_laplace += 1 - torch.sum((normal_pad[:,:,1:-1,1:-1] * normal_pad[:,:,1:-1,:-2]),axis=1).unsqueeze(1)
     return normal_laplace
+
+def get_grad_loss(gt, pred):
+    gt_pad = torch.nn.functional.pad(gt, (1, 1, 1, 1))
+    pred_pad = torch.nn.functional.pad(pred, (1, 1, 1, 1))
+
+    gt_grad_x = gt_pad[:, :, 2:, 1:-1] + gt_pad[:, :, :-2, 1:-1] + -2 * gt_pad[:,:,1:-1,1:-1]
+    pred_grad_x = pred_pad[:, :, 2:, 1:-1] + pred_pad[:, :, :-2, 1:-1] + -2 * pred_pad[:,:,1:-1,1:-1]
+
+    gt_grad_y = gt_pad[:, :, 1:-1, 2:] + gt_pad[:, :, 1:-1, :-2] + -2 * gt_pad[:,:,1:-1,1:-1]
+    pred_grad_y = pred_pad[:, :, 1:-1, 2:] + pred_pad[:, :, 1:-1, :-2] + -2 * pred_pad[:,:,1:-1,1:-1]
+
+    return torch.abs(pred_grad_x - gt_grad_x) + torch.abs(pred_grad_y - gt_grad_y)
