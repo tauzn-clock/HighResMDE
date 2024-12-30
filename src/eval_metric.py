@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
     print("Using ", args.pretrained_model)
     model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
+    torch. set_grad_enabled(False)
     torch.cuda.empty_cache()
     #model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
     # Freeze the encoder layers only

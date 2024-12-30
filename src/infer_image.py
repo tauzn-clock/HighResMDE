@@ -55,12 +55,8 @@ if __name__ == "__main__":
 
     print("Using ", args.pretrained_model)
     model.load_state_dict(torch.load(args.pretrained_model, weights_only=False))
+    torch. set_grad_enabled(False)
     torch.cuda.empty_cache()
-    #model.backbone.backbone.from_pretrained(model.config.swinv2_pretrained_path)
-    # Freeze the encoder layers only
-    for param in model.backbone.parameters():  # 'backbone' is typically where the encoder layers reside
-        param.requires_grad = False
-    #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
     silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
     dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
