@@ -39,7 +39,7 @@ normal_estimation = Depth2Normal(local_rank).to(local_rank)
 
 loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {1}", unit="batch")
 for itr, x in enumerate(loop):
-    #if itr<84: continue
+    #if itr<2: continue
     for k in x.keys():
         x[k] = x[k].to(local_rank)
     break
@@ -49,13 +49,42 @@ normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["ma
 normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
-PLANE_CNT = 32
+# Plane estimator
+
+PLANE_CNT = 1024
 K_MEAN_ITERATION = 100
+
+B, _, H, W = depth_gt.shape
+
+coords_h = torch.arange(H).to(local_rank)
+coords_w = torch.arange(W).to(local_rank)
+index_mesh = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))
 
 plane = torch.randint(1, PLANE_CNT+1, x["depth_values"].shape).to(local_rank)
 plane = plane * x["mask"]
+for b in range(B):
+    index_valid = index_mesh[:, x["mask"][b].squeeze()]
+    index_select = index_valid[:, :PLANE_CNT]
 
-for b in range(len(x["depth_values"])):
+    store_normal = normal_gt[b,:,index_select[0,:],index_select[1,:]]
+    store_dist = dist_gt[b,:,index_select[0,:],index_select[1,:]]
+
+    # Re Cluster
+    normal_gt_flatten = normal_gt[b].view(3, -1)
+    normal_distance_function = 1 - torch.matmul(store_normal.t(), normal_gt_flatten)
+    normal_distance_function = normal_distance_function.view(PLANE_CNT, *normal_gt[b].shape[1:])
+
+    dist_gt_flatten = dist_gt[b].view(-1)
+    dist_distance_function = torch.abs(store_dist.t() - dist_gt_flatten)
+    dist_distance_function = dist_distance_function.view(PLANE_CNT, *normal_gt[b].shape[1:])
+
+    distance_function = normal_distance_function + dist_distance_function
+    
+    new_plane = torch.argmin(distance_function, dim=0) + 1
+
+    plane[b] = new_plane * x["mask"][b]
+
+for b in range(B):
     for em_itr in range(K_MEAN_ITERATION):
         store_normal = torch.zeros((3, PLANE_CNT)).to(local_rank)
         store_dist = torch.zeros(PLANE_CNT).to(local_rank)
@@ -76,20 +105,16 @@ for b in range(len(x["depth_values"])):
         
         # Re Cluster
         normal_gt_flatten = normal_gt[b].view(3, -1)
-        normal_distance_function = torch.matmul(store_normal.t(), normal_gt_flatten)
-        normal_distance_function = 1 - normal_distance_function.view(PLANE_CNT, *normal_gt[b].shape[1:])
-        print(normal_distance_function.min(), normal_distance_function.max())
+        normal_distance_function = 1 - torch.matmul(store_normal.t(), normal_gt_flatten)
+        normal_distance_function = normal_distance_function.view(PLANE_CNT, *normal_gt[b].shape[1:])
 
         dist_gt_flatten = dist_gt[b].view(-1).unsqueeze(0)
         dist_distance_function = torch.abs(store_dist.unsqueeze(0).t() - dist_gt_flatten)
         dist_distance_function = dist_distance_function.view(PLANE_CNT, *normal_gt[b].shape[1:])
-        print(dist_distance_function.min(), dist_distance_function.max())
 
         distance_function = normal_distance_function + dist_distance_function
-        print(distance_function.min(), distance_function.max())
 
-        new_plane = distance_function.min(dim=0)[0].unsqueeze(0)
-        print(new_plane.shape)
+        new_plane = torch.argmin(distance_function, dim=0) + 1
 
         plane[b] = new_plane * x["mask"][b]
 
