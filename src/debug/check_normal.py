@@ -22,6 +22,7 @@ from global_parser import global_parser
 from infer_image import infer_image
 
 from torchvision.transforms import GaussianBlur
+from plane_estimation import normal_to_planes
 
 import matplotlib.pyplot as plt
 
@@ -51,66 +52,6 @@ normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["ma
 normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
-def normal_to_planes(normal, mask, PLANE_CNT=128, K_MEAN_ITERATION=100):
-
-    def recluster(normal, dist, store_normal, store_dist, PLANE_CNT):
-        normal_gt_flatten = normal.view(3, -1)
-        normal_distance_function = 1 - torch.matmul(store_normal.t(), normal_gt_flatten)
-        normal_distance_function = normal_distance_function.view(PLANE_CNT, *normal.shape[1:])
-
-        dist_gt_flatten = dist.view(-1)
-        dist_distance_function = torch.abs(store_dist.t() - dist_gt_flatten)
-        dist_distance_function = dist_distance_function.view(PLANE_CNT, *normal.shape[1:])
-
-        distance_function = normal_distance_function + dist_distance_function
-
-        new_plane = torch.argmin(distance_function, dim=0) + 1
-
-        return new_plane
-
-    B, _, H, W = normal.shape
-
-    # Generate Index Mesh
-    coords_h = torch.arange(H).to(local_rank)
-    coords_w = torch.arange(W).to(local_rank)
-    index_mesh = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))
-
-    plane = torch.randint(1, PLANE_CNT+1, (B,1,H,W)).to(local_rank)
-    plane = plane * mask
-
-    # Randomly Select Points
-    for b in range(B):
-        index_valid = index_mesh[:, mask[b].squeeze()]
-        index_select = index_valid[:, :PLANE_CNT]
-
-        store_normal = normal_gt[b,:,index_select[0,:],index_select[1,:]]
-        store_dist = dist_gt[b,:,index_select[0,:],index_select[1,:]]
-
-        plane[b] = recluster(normal_gt[b], dist_gt[b], store_normal, store_dist, PLANE_CNT) * mask[b]
-
-    for b in range(B):
-        for em_itr in range(K_MEAN_ITERATION):
-            store_normal = torch.zeros((3, PLANE_CNT)).to(local_rank)
-            store_dist = torch.zeros((1,PLANE_CNT)).to(local_rank)
-            
-            # Average
-            for i in range(1, PLANE_CNT+1):
-                index_mask = (plane[b]==i).float()
-                if index_mask.sum() == 0: continue
-                normal = normal_gt[b] * index_mask.unsqueeze(0)
-                normal = normal.squeeze(0)
-                normal_mean = normal.sum(dim=(1,2)) / index_mask.sum()
-                dist = dist_gt[b] * index_mask.unsqueeze(0)
-                dist_mean = dist.sum() / index_mask.sum()
-                store_normal[:, i-1] = normal_mean
-                store_dist[:,i-1] = dist_mean
-
-            store_normal = F.normalize(store_normal, dim=0)
-            
-            plane[b] = recluster(normal_gt[b], dist_gt[b], store_normal, store_dist, PLANE_CNT) * mask[b]
-        
-    return plane
-
 
 # Plane estimator
 
@@ -128,7 +69,7 @@ normal_gt = normal_gt * x["mask"]
 normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
-plane = normal_to_planes(normal_gt, x["mask"], PLANE_CNT, K_MEAN_ITERATION)
+plane = normal_to_planes(normal_gt, dist_gt, x["mask"], PLANE_CNT, K_MEAN_ITERATION)
 
 """
     # Prunning Loop
