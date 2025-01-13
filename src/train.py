@@ -23,6 +23,7 @@ from loss import silog_loss, get_metrics
 from segmentation import compute_seg, get_smooth_ND, get_dist_laplace_kernel, get_normal_laplace_kernel, get_grad_loss
 from global_parser import global_parser
 from eval_metric import eval
+from plane_estimation import normal_to_planes
 
 import matplotlib.pyplot as plt
 
@@ -75,7 +76,7 @@ def main(local_rank, world_size):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     silog_criterion = silog_loss(variance_focus=args.var_focus).to(local_rank)
     dn_to_distance = DN_to_distance(args.batch_size, args.height, args.width).to(local_rank)
-    normal_estimation = Depth2Normal(local_rank).to(local_rank)
+    normal_estimation = Depth2Normal(local_rank)
 
     for epoch in range(args.total_epoch):
         model.train()
@@ -93,7 +94,9 @@ def main(local_rank, world_size):
             normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
             normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
             dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
-            
+            normal_gt = normal_gt.detach()
+            dist_gt = dist_gt.detach()
+
             # CutMix
             if args.cutmix:
                 if torch.rand(1) < args.cut_prob:
@@ -148,7 +151,12 @@ def main(local_rank, world_size):
             loss_seg_dist = 0
             loss_seg_norm = 0
 
-            for i in range(1,8):
+            PLANE_CNT = 32
+            K_MEAN_ITERATION = 20
+
+            x["plane_values"] = normal_to_planes(norm_est, dist_est, x["mask"], PLANE_CNT, K_MEAN_ITERATION)
+
+            for i in range(1, PLANE_CNT+1):
                 loss_seg_dist += dist_grad[x["plane_values"]==i].mean() 
                 loss_seg_norm += norm_grad[x["plane_values"]==i].mean()
 

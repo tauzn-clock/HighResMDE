@@ -23,41 +23,43 @@ def normal_to_planes(normal, dist, mask, PLANE_CNT=128, K_MEAN_ITERATION=100):
 
     B, _, H, W = normal.shape
 
-    # Generate Index Mesh
-    coords_h = torch.arange(H).to(device)
-    coords_w = torch.arange(W).to(device)
-    index_mesh = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))
+    with torch.no_grad():
 
-    plane = torch.randint(1, PLANE_CNT+1, (B,1,H,W)).to(device)
-    plane = plane * mask
+        # Generate Index Mesh
+        coords_h = torch.arange(H).to(device)
+        coords_w = torch.arange(W).to(device)
+        index_mesh = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))
 
-    # Randomly Select Points
-    for b in range(B):
-        index_valid = index_mesh[:, mask[b].squeeze()]
-        index_select = index_valid[:, :PLANE_CNT]
+        plane = torch.randint(1, PLANE_CNT+1, (B,1,H,W)).to(device)
+        plane = plane * mask
 
-        store_normal = normal[b,:,index_select[0,:],index_select[1,:]]
-        store_dist = dist[b,:,index_select[0,:],index_select[1,:]]
+        # Randomly Select Points
+        for b in range(B):
+            index_valid = index_mesh[:, mask[b].squeeze()]
+            index_select = index_valid[:, :PLANE_CNT]
 
-        plane[b] = recluster(normal[b], dist[b], store_normal, store_dist, PLANE_CNT) * mask[b]
+            store_normal = normal[b,:,index_select[0,:],index_select[1,:]]
+            store_dist = dist[b,:,index_select[0,:],index_select[1,:]]
 
-    for b in range(B):
-        for em_itr in range(K_MEAN_ITERATION):
-    
-            # Average
-            for i in range(1, PLANE_CNT+1):
-                index_mask = (plane[b]==i).float()
-                if index_mask.sum() == 0: continue
-                normal_mean = normal[b] * index_mask.unsqueeze(0)
-                normal_mean = normal_mean.squeeze(0)
-                normal_mean = normal_mean.sum(dim=(1,2)) / index_mask.sum()
-                dist_mean = dist[b] * index_mask.unsqueeze(0)
-                dist_mean = dist_mean.sum() / index_mask.sum()
-                store_normal[:, i-1] = normal_mean
-                store_dist[:,i-1] = dist_mean
-
-            store_normal = F.normalize(store_normal, dim=0)
-            
             plane[b] = recluster(normal[b], dist[b], store_normal, store_dist, PLANE_CNT) * mask[b]
+
+        for b in range(B):
+            for em_itr in range(K_MEAN_ITERATION):
         
-    return plane
+                # Average
+                for i in range(1, PLANE_CNT+1):
+                    index_mask = (plane[b]==i).float()
+                    if index_mask.sum() == 0: continue
+                    normal_mean = normal[b] * index_mask.unsqueeze(0)
+                    normal_mean = normal_mean.squeeze(0)
+                    normal_mean = normal_mean.sum(dim=(1,2)) / index_mask.sum()
+                    dist_mean = dist[b] * index_mask.unsqueeze(0)
+                    dist_mean = dist_mean.sum() / index_mask.sum()
+                    store_normal[:, i-1] = normal_mean
+                    store_dist[:,i-1] = dist_mean
+
+                store_normal = F.normalize(store_normal, dim=0)
+                
+                plane[b] = recluster(normal[b], dist[b], store_normal, store_dist, PLANE_CNT) * mask[b]
+            
+        return plane
