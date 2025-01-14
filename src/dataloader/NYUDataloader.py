@@ -128,9 +128,10 @@ def train_transform(input):
         input.plane_values = input.plane_values.transpose(Image.FLIP_LEFT_RIGHT)
 
     # Rotate
-    #deg = random.uniform(-5,5)
-    #input.pixel_values = input.pixel_values.rotate(deg)
-    #input.depth_values = input.depth_values.rotate(deg)
-    #input.mask = input.mask.rotate(deg)
+    deg = random.uniform(-5,5)
+    input.pixel_values = input.pixel_values.rotate(deg)
+    input.depth_values = input.depth_values.rotate(deg)
+    input.mask = input.mask.rotate(deg)
+    input.plane_values = input.plane_values.rotate(deg)
 
     return input

@@ -159,9 +159,14 @@ def main(local_rank, world_size):
 
             x["plane_values"] = normal_to_planes(norm_est, dist_est, x["mask"], PLANE_CNT, K_MEAN_ITERATION)
 
-            for i in range(1, PLANE_CNT+1):
-                loss_seg_dist += dist_grad[x["plane_values"]==i].mean() 
-                loss_seg_norm += norm_grad[x["plane_values"]==i].mean()
+            for b in range(args.batch_size):
+                for i in range(1, PLANE_CNT+1):
+                    tmp_a = dist_grad[b][x["plane_values"][b]==i].mean() 
+                    tmp_b = norm_grad[b][x["plane_values"][b]==i].mean()
+                    if tmp_a > 0:
+                        loss_seg_dist += tmp_a
+                    if tmp_b > 0:
+                        loss_seg_norm += tmp_b
 
             loss_seg_dist = args.loss_seg_dist_weight * loss_seg_dist
             loss_seg_norm = args.loss_seg_norm_weight * loss_seg_norm            
@@ -171,7 +176,7 @@ def main(local_rank, world_size):
             # Grad Loss
             loss_grad = 100 * get_grad_loss(depth_gt, (d1_list[0]+d2_list[0])/2)[x["mask"]].mean()
 
-            loss = loss_depth + loss_uncer + loss_normal + loss_distance + loss_seg_dist + loss_seg_norm + loss_grad
+            loss = loss_depth + loss_uncer + loss_normal + loss_distance + loss_seg_dist + loss_seg_norm #+ loss_grad
             loss = loss.mean()
 
             loss.backward()
