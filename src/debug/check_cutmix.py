@@ -41,7 +41,7 @@ for itr, x in enumerate(loop):
         x[k] = x[k].to(local_rank)
     
     depth_gt = x["depth_values"] #Unit: m
-    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+    normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
     normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
     dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 

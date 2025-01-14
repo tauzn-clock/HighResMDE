@@ -42,13 +42,13 @@ normal_estimation = Depth2Normal(local_rank).to(local_rank)
 
 loop = tqdm.tqdm(train_dataloader, desc=f"Epoch {1}", unit="batch")
 for itr, x in enumerate(loop):
-    if itr<0: continue
+    if itr<10: continue
     for k in x.keys():
         x[k] = x[k].to(local_rank)
     break
 
 depth_gt = x["depth_values"] #Unit: m
-normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], args.normal_blur) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
+normal_gt, x["mask"] = normal_estimation(depth_gt, x["camera_intrinsics"], x["mask"], 1.0) # Intrinsic needs to be in mm, ideally change depth_gt to mm for consistency, skip for speed
 normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
@@ -56,7 +56,7 @@ dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #
 # Plane estimator
 
 PLANE_CNT = 128
-K_MEAN_ITERATION = 100
+K_MEAN_ITERATION = 10
 KERNEL_SIZE = 31
 
 B, _, H, W = depth_gt.shape
@@ -70,21 +70,6 @@ normal_gt = F.normalize(normal_gt, dim=1, p=2) #Unit: none, normalised
 dist_gt = dn_to_distance(depth_gt, normal_gt, x["camera_intrinsics_inverted"]) #Camera intrinsic needs to be in mm, but dist_gt is in m, probably dont need to scale depth_gt but just to be safe
 
 plane = normal_to_planes(normal_gt, dist_gt, x["mask"], PLANE_CNT, K_MEAN_ITERATION)
-
-"""
-    # Prunning Loop
-    while True:
-        pixel_cnt = torch.zeros(PLANE_CNT, dtype=torch.int)  
-        for value in range(1, PLANE_CNT):
-            pixel_cnt[value - 1] = (plane[b] == value).sum()
-
-        min_count_value = torch.argmin(pixel_cnt) + 1  
-        print(min_count_value, pixel_cnt[min_count_value - 1])
-
-        break
-
-    break
-"""
 
 normal = normal_gt[1].cpu().numpy().transpose((1,2,0))
 normal = (normal + 1)/2

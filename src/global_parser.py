@@ -33,7 +33,7 @@ def global_parser():
     parser.add_argument('--var_focus', type=float, default=0.85)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
-    parser.add_argument('--normal_blur', type=float, default=5.0)
+    parser.add_argument('--gaussian_blur_kernel', type=float, default=5.0)
     parser.add_argument('--total_epoch', type=int, default=50)
     parser.add_argument('--initial_epoch', type=int, default=5)
     parser.add_argument('--cutmix', action=argparse.BooleanOptionalAction)
