@@ -2,13 +2,12 @@ import numpy as np
 
 def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1):
     assert(POINTS.shape[1] == 3)
+    N = POINTS.shape[0]
 
     information = np.zeros(MAX_PLANE+1, dtype=float)
-    mask = np.zeros((MAX_PLANE+1, POINTS.shape[0]), dtype=int)
+    mask = np.zeros((MAX_PLANE+1, N), dtype=int)
     plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
-    availability_mask = np.ones(POINTS.shape, dtype=int)
-    available_index = np.linspace(0, POINTS.shape[0]-1, POINTS.shape[0], dtype=int)
-    N = POINTS.shape[0]
+    availability_mask = np.ones(N, dtype=bool)
     
     # O
     information[0] = N * 3 * np.log(R/EPSILON)
@@ -21,13 +20,17 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
 
         BEST_INLIERS_CNT = 0
-        BEST_INLIERS_MASK = None
-        BEST_ERROR = None
-        BEST_PLANE = None
+        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
+        BEST_ERROR = np.zeros(N, dtype=float)
+        BEST_PLANE = np.zeros(4, dtype=float)
+
         TOLERANCE = (np.log(R/EPSILON) - np.log(SIGMA/EPSILON) - 0.5 * np.log(2*np.pi)) / (0.5 / SIGMA**2)
         assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
         TOLERANCE = np.sqrt(TOLERANCE)
         print("TOLERANCE", TOLERANCE)
+
+        available_index = np.linspace(0, N-1, N, dtype=int)
+        available_index = np.where(availability_mask)[0]
 
         for _ in range(ITERATION):
             # Get 3 random points
@@ -48,6 +51,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             inliers = 0
             error = np.abs(np.dot(POINTS, normal.T)-distance)
             trial_mask = error < TOLERANCE
+            trial_mask = trial_mask & availability_mask
             trial_cnt = np.sum(trial_mask)
 
             if trial_cnt > BEST_INLIERS_CNT:

@@ -9,7 +9,7 @@ SIGMA = EPSILON * 0.5 # Normal std
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 0.5
-MAX_PLANE = 1
+MAX_PLANE = 3
 
 points = get_plane(R, EPSILON)
 
@@ -17,10 +17,11 @@ print(points.shape)
 
 information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE)
 
-print("Information:", information)
 for i in range(MAX_PLANE+1):
     print(f"Cnt {i}", np.sum(mask[i]==i))
 print("Planes: ", plane)
+
+print("Information:", information)
 
 # Visualize the point cloud
 point_cloud = o3d.geometry.PointCloud()
