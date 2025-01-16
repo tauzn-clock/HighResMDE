@@ -21,7 +21,7 @@ SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.9
 INLIER_THRESHOLD = 0.1
-MAX_PLANE = 8
+MAX_PLANE = 1
 
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
 INTRINSICS = np.array(INTRINSICS)
@@ -48,19 +48,25 @@ for i in range(MAX_PLANE+1):
     print(f"Cnt {i}", np.sum(mask[i]==i))
 print("Planes: ", plane)
 
+#Find index of smallest information
+min_idx = np.argmin(information)
+print("Found Planes", min_idx)
+
 print("Information:", information)
+
+dist = points @ plane[1:min_idx+1,:3].T + np.stack([plane[1:min_idx+1,3]]*points.shape[0], axis=0)
+dist = np.abs(dist)
+isPartofPlane = mask != 0
+mask = np.argmin(dist, axis=1) + 1
+mask = mask * isPartofPlane
 
 # Visualize the point cloud
 point_cloud = o3d.geometry.PointCloud()
 point_cloud.points = o3d.utility.Vector3dVector(points)
 color = np.zeros((points.shape[0], 3))
-#Find index of smallest information
-min_idx = np.argmin(information)
-print("Found Planes", min_idx)
 
-for i in range(1, MAX_PLANE+1):
+for i in range(1, min_idx+1):
     color[mask[i]==i] = np.random.rand(3)
 point_cloud.colors = o3d.utility.Vector3dVector(color)
 
 o3d.visualization.draw_geometries([point_cloud])
-
