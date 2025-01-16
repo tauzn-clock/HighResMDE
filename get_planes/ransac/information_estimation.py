@@ -4,7 +4,10 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     assert(POINTS.shape[1] == 3)
 
     information = np.zeros(MAX_PLANE+1, dtype=float)
-    mask = np.zeros((MAX_PLANE+1, POINTS.shape[0], POINTS.shape[1]), dtype=bool)
+    mask = np.zeros((MAX_PLANE+1, POINTS.shape[0]), dtype=int)
+    plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
+    availability_mask = np.ones(POINTS.shape, dtype=int)
+    available_index = np.linspace(0, POINTS.shape[0]-1, POINTS.shape[0], dtype=int)
     N = POINTS.shape[0]
     
     # O
@@ -28,7 +31,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
 
         for _ in range(ITERATION):
             # Get 3 random points
-            idx = np.random.randint(0, N, 3)
+            idx = np.random.choice(available_index, 3, replace=False)
 
             # Get the normal vector and distance
             A = POINTS[idx[0]]
@@ -44,13 +47,13 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             # Count the number of inliers
             inliers = 0
             error = np.abs(np.dot(POINTS, normal.T)-distance)
-            mask = error < TOLERANCE
-            cnt = np.sum(mask)
+            trial_mask = error < TOLERANCE
+            trial_cnt = np.sum(trial_mask)
 
-            if cnt > BEST_INLIERS_CNT:
-                BEST_INLIERS_CNT = cnt
-                BEST_INLIERS_MASK = mask
-                BEST_PLANE = (normal, distance)
+            if trial_cnt > BEST_INLIERS_CNT:
+                BEST_INLIERS_CNT = trial_cnt
+                BEST_INLIERS_MASK = trial_mask
+                BEST_PLANE = np.concatenate((normal, [distance]))
                 BEST_ERROR = error
         
         information[plane_cnt] += (N - BEST_INLIERS_CNT) * 3 * np.log(R/EPSILON) # Points that are not inliers
@@ -58,6 +61,11 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         total_error = np.sum(BEST_ERROR[BEST_INLIERS_MASK]**2) * 0.5 / SIGMA**2
         information[plane_cnt] += total_error + 0.5 * np.log(2*np.pi) * BEST_INLIERS_CNT + np.log(SIGMA/EPSILON) * BEST_INLIERS_CNT
         
+        tmp_mask = mask[plane_cnt-1].copy()
+        tmp_mask[BEST_INLIERS_MASK] = plane_cnt
+        mask[plane_cnt] = tmp_mask
+        plane[plane_cnt] = BEST_PLANE
+
+        availability_mask[BEST_INLIERS_MASK] = 0
     
-    print(information)
-    return BEST_INLIERS_MASK, BEST_PLANE
+    return information, mask, plane

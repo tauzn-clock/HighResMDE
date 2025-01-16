@@ -1,6 +1,4 @@
 import numpy as np
-import open3d as o3d
-import random
 
 def get_plane(R, EPSILON):
     # Parameters for the flat plane
@@ -18,7 +16,7 @@ def get_plane(R, EPSILON):
     plane_points = np.vstack((x_grid.flatten(), y_grid.flatten(), z_vals.flatten())).T
 
     # Add noise to the plane
-    noise_range = 3
+    noise_range = 1
     noise = np.random.randint(-noise_range, noise_range, [plane_points.shape[0], 3]) * EPSILON
     noisy_points = plane_points + noise
 
@@ -28,9 +26,5 @@ def get_plane(R, EPSILON):
 
     # Combine the noisy plane points with the random noisy points
     all_points = np.vstack((noisy_points, random_points))
-
-    # Convert to Open3D point cloud
-    point_cloud = o3d.geometry.PointCloud()
-    point_cloud.points = o3d.utility.Vector3dVector(all_points)
-
-    return point_cloud
+    
+    return all_points
