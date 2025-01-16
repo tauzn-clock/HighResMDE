@@ -28,3 +28,10 @@ def get_plane(R, EPSILON):
     all_points = np.vstack((noisy_points, random_points))
     
     return all_points
+
+def get_planes(R, EPSILON, NUM_PLANES):
+    planes = []
+    for _ in range(NUM_PLANES):
+        points = get_plane(R, EPSILON)
+        planes.append(points)
+    return planes

@@ -9,7 +9,7 @@ SIGMA = EPSILON * 0.5 # Normal std
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 0.5
-MAX_PLANE = 3
+MAX_PLANE = 8
 
 points = get_plane(R, EPSILON)
 
