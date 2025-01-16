@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 
 def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None):
     assert(POINTS.shape[1] == 3)
@@ -32,8 +33,10 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
 
         available_index = np.linspace(0, N-1, N, dtype=int)
         available_index = np.where(availability_mask)[0]
+        if (availability_mask).sum() < 3:
+            break
 
-        for _ in range(ITERATION):
+        for _ in tqdm(range(ITERATION)):
             # Get 3 random points
             idx = np.random.choice(available_index, 3, replace=False)
 
@@ -45,7 +48,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             AB = B - A
             AC = C - A
             normal = np.cross(AB, AC)
-            normal = normal / np.linalg.norm(normal)
+            normal = normal / (np.linalg.norm(normal) + 1e-6)
             distance = -np.dot(normal, A)
 
             # Count the number of inliers
