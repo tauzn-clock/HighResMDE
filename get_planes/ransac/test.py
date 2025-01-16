@@ -11,7 +11,11 @@ CONFIDENCE = 0.999
 INLIER_THRESHOLD = 0.5
 MAX_PLANE = 4
 
-points = get_plane(R, EPSILON, [1, 0, 1, 2.5])
+plane_params = [[0, 0, 1, 0], [0.2, 0, 1, 0]]
+
+points = np.zeros((0,3))
+for param in plane_params:
+    points = np.vstack((points, get_plane(R, EPSILON, param, 1)))
 
 print(points.shape)
 
@@ -27,10 +31,12 @@ print("Information:", information)
 point_cloud = o3d.geometry.PointCloud()
 point_cloud.points = o3d.utility.Vector3dVector(points)
 color = np.zeros((points.shape[0], 3))
-for i in range(1,MAX_PLANE+1):
-    if information[i] > information[i-1]: 
-        print("Found Planes", i-1)
-        break
+
+#Find index of smallest information
+min_idx = np.argmin(information)
+print("Found Planes", min_idx)
+
+for i in range(1, min_idx+1):
     color[mask[i]==i] = np.random.rand(3)
 point_cloud.colors = o3d.utility.Vector3dVector(color)
 

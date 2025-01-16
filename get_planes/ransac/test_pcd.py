@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_plane(R, EPSILON, param=[0, 0, 1, 0]):
+def get_plane(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
     # Parameters for the flat plane
     num_points = int(R//EPSILON)  # Number of points on the flat plane
     plane_size = R  # Size of the plane (e.g., 10x10 units)
@@ -11,8 +11,8 @@ def get_plane(R, EPSILON, param=[0, 0, 1, 0]):
     y_vals = np.linspace(-plane_size / 2, plane_size / 2, num_points)
     x_grid, y_grid = np.meshgrid(x_vals, y_vals)
     param = np.array(param)
-    param[:3] = param[:3] / np.linalg.norm(param[:3])
-    z_vals = - param[3] + (- param[0] * x_grid - param[1] * y_grid) / param[2]
+    normal = param[:3] / np.linalg.norm(param[:3])
+    z_vals = - param[3] + (- normal[0] * x_grid - normal[1] * y_grid) / (normal[2] + 1e-7)
     # Round z_vals
     z_vals = z_vals//EPSILON * EPSILON
 
@@ -24,22 +24,15 @@ def get_plane(R, EPSILON, param=[0, 0, 1, 0]):
     plane_points = plane_points[mask]
 
     # Add noise to the plane
-    noise_range = 1
+    noise_range = noise
     noise = np.random.randint(-noise_range, noise_range, [plane_points.shape[0], 3]) * EPSILON
     noisy_points = plane_points + noise
 
     # Add additional random noisy points (points far from the plane)
-    num_noisy_points = (num_points**2) * 1
+    num_noisy_points = int((num_points**2) * 0.5)
     random_points = np.random.randint(low=-num_points/2, high=num_points/ 2, size=(num_noisy_points, 3)) * EPSILON
 
     # Combine the noisy plane points with the random noisy points
     all_points = np.vstack((noisy_points, random_points))
     
     return all_points
-
-def get_planes_from_param(R, EPSILON, normal):
-    planes = []
-    for _ in range(NUM_PLANES):
-        points = get_plane(R, EPSILON)
-        planes.append(points)
-    return planes
