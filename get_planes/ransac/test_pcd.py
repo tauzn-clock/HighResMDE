@@ -29,7 +29,7 @@ def get_plane(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
     noisy_points = plane_points + noise
 
     # Add additional random noisy points (points far from the plane)
-    num_noisy_points = int((num_points**2) * 0.5)
+    num_noisy_points = int((num_points**2) * 1)
     random_points = np.random.randint(low=-num_points/2, high=num_points/ 2, size=(num_noisy_points, 3)) * EPSILON
 
     # Combine the noisy plane points with the random noisy points

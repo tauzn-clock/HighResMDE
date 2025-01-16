@@ -5,13 +5,13 @@ import numpy as np
 
 EPSILON = 0.1 # Resolution
 R = 10 # Maximum Range
-SIGMA = EPSILON * 0.5 # Normal std
+SIGMA = EPSILON * 0.75 # Normal std
 
 CONFIDENCE = 0.999
-INLIER_THRESHOLD = 0.5
+INLIER_THRESHOLD = 0.167
 MAX_PLANE = 4
 
-plane_params = [[0, 0, 1, 0], [0.2, 0, 1, 0]]
+plane_params = [[0, 0, 1, 0], [0.2, 0, 1, 0], [0.5, 0, 1, -0.6]]
 
 points = np.zeros((0,3))
 for param in plane_params:
