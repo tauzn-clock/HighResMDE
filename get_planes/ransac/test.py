@@ -5,7 +5,7 @@ import numpy as np
 
 EPSILON = 0.1 # Resolution
 R = 10 # Maximum Range
-SIGMA = EPSILON * 0.75 # Normal std
+SIGMA = EPSILON  # Normal std
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 0.167

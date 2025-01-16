@@ -36,3 +36,4 @@ def get_plane(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
     all_points = np.vstack((noisy_points, random_points))
     
     return all_points
+
