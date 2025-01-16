@@ -1,6 +1,6 @@
 import numpy as np
 
-def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1):
+def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None):
     assert(POINTS.shape[1] == 3)
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     N = POINTS.shape[0]
@@ -10,18 +10,21 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     TOLERANCE = np.sqrt(TOLERANCE)
     print("TOLERANCE", TOLERANCE)
 
+    ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
+    print("ITERATION", ITERATION)
+
     information = np.zeros(MAX_PLANE+1, dtype=float)
     mask = np.zeros((MAX_PLANE+1, N), dtype=int)
     plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
     availability_mask = np.ones(N, dtype=bool)
+    if valid_mask is not None:
+        availability_mask = valid_mask
     
     # O
     information[0] = N * 3 * np.log(R/EPSILON)
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
-        ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
-
         BEST_INLIERS_CNT = 0
         BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
         BEST_ERROR = np.zeros(N, dtype=float)
