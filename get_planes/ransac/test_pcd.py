@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_plane(R, EPSILON):
+def get_plane(R, EPSILON, param=[0, 0, 1, 0]):
     # Parameters for the flat plane
     num_points = int(R//EPSILON)  # Number of points on the flat plane
     plane_size = R  # Size of the plane (e.g., 10x10 units)
@@ -10,10 +10,18 @@ def get_plane(R, EPSILON):
     x_vals = np.linspace(-plane_size / 2, plane_size / 2, num_points)
     y_vals = np.linspace(-plane_size / 2, plane_size / 2, num_points)
     x_grid, y_grid = np.meshgrid(x_vals, y_vals)
-    z_vals = np.full_like(x_grid, plane_height)
+    param = np.array(param)
+    param[:3] = param[:3] / np.linalg.norm(param[:3])
+    z_vals = - param[3] + (- param[0] * x_grid - param[1] * y_grid) / param[2]
+    # Round z_vals
+    z_vals = z_vals//EPSILON * EPSILON
 
     # Flatten the grid to create a 1D array of points
     plane_points = np.vstack((x_grid.flatten(), y_grid.flatten(), z_vals.flatten())).T
+    
+    # Stay within R cube
+    mask = (plane_points[:,2] < R/2) & (plane_points[:,2] > -R/2)
+    plane_points = plane_points[mask]
 
     # Add noise to the plane
     noise_range = 1
@@ -29,7 +37,7 @@ def get_plane(R, EPSILON):
     
     return all_points
 
-def get_planes(R, EPSILON, NUM_PLANES):
+def get_planes_from_param(R, EPSILON, normal):
     planes = []
     for _ in range(NUM_PLANES):
         points = get_plane(R, EPSILON)

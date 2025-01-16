@@ -5,6 +5,11 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     N = POINTS.shape[0]
 
+    TOLERANCE = (np.log(R/EPSILON) - np.log(SIGMA/EPSILON) - 0.5 * np.log(2*np.pi)) / (0.5 / SIGMA**2)
+    assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
+    TOLERANCE = np.sqrt(TOLERANCE)
+    print("TOLERANCE", TOLERANCE)
+
     information = np.zeros(MAX_PLANE+1, dtype=float)
     mask = np.zeros((MAX_PLANE+1, N), dtype=int)
     plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
@@ -22,11 +27,6 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         BEST_ERROR = np.zeros(N, dtype=float)
         BEST_PLANE = np.zeros(4, dtype=float)
 
-        TOLERANCE = (np.log(R/EPSILON) - np.log(SIGMA/EPSILON) - 0.5 * np.log(2*np.pi)) / (0.5 / SIGMA**2)
-        assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
-        TOLERANCE = np.sqrt(TOLERANCE)
-        print("TOLERANCE", TOLERANCE)
-
         available_index = np.linspace(0, N-1, N, dtype=int)
         available_index = np.where(availability_mask)[0]
 
@@ -43,11 +43,11 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             AC = C - A
             normal = np.cross(AB, AC)
             normal = normal / np.linalg.norm(normal)
-            distance = np.dot(normal, A)
+            distance = -np.dot(normal, A)
 
             # Count the number of inliers
             inliers = 0
-            error = np.abs(np.dot(POINTS, normal.T)-distance)
+            error = np.abs(np.dot(POINTS, normal.T)+distance)
             trial_mask = error < TOLERANCE
             trial_mask = trial_mask & availability_mask
             trial_cnt = np.sum(trial_mask)
