@@ -92,22 +92,17 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     x = x.flatten()
     y = y.flatten()
     fx, fy, cx, cy = INTRINSICS[0], INTRINSICS[5], INTRINSICS[2], INTRINSICS[6]
-    x_3d = (x - cx) / fx
-    y_3d = (y - cy) / fy
-
-    z = np.ones(N)
-    direction_vector = np.vstack((x_3d, y_3d, z)).T
-    direction_vector = direction_vector / np.linalg.norm(direction_vector, axis=1)[:, None]
-
     Z = DEPTH.flatten()
     x_3d = (x - cx) * Z / fx
     y_3d = (y - cy) * Z / fy
     POINTS = np.vstack((x_3d, y_3d, Z)).T
 
+    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-6)
+
     SPACE_STATES = np.log(R/EPSILON)
     PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON) - SPACE_STATES
 
-    TOLERANCE = (- PER_POINT_INFO) / (0.5 / (SIGMA**2))
+    TOLERANCE = (- PER_POINT_INFO) * SIGMA**2 / 0.5
     assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
     TOLERANCE = np.sqrt(TOLERANCE)
     print("TOLERANCE", TOLERANCE)

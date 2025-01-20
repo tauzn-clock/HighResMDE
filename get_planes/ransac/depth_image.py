@@ -7,15 +7,15 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 
-root = "/scratchdata/processed/stair_down"
+root = "/scratchdata/nyu_depth_v2/sync"#"/scratchdata/processed/stair_up"
 data_csv = "/HighResMDE/src/nddepth_train_v2.csv"
 
 with open(data_csv, 'r') as f:
     reader = csv.reader(f)
     data = list(reader)
 
-data = data[104]
-data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
+data = data[34]
+#data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
 
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
 INTRINSICS = np.array(INTRINSICS)
@@ -27,10 +27,12 @@ H, W = depth.shape
 valid_mask = depth > 0
 
 EPSILON = 1/float(data[6]) # Resolution
+print("EPSILON", EPSILON)
 R = float(data[7]) # Maximum Range
-SIGMA = EPSILON *6 # Normal std
+print("R", R)
+SIGMA = EPSILON * 10 # Normal std
 
-CONFIDENCE = 0.95
+CONFIDENCE = 0.99
 INLIER_THRESHOLD = 2e4/(H*W)
 MAX_PLANE = 3
 
@@ -51,15 +53,15 @@ print("Information:", information)
 dist = points @ plane[1:min_idx+1,:3].T + np.stack([plane[1:min_idx+1,3]]*points.shape[0], axis=0)
 dist = np.abs(dist)
 isPartofPlane = mask != 0
-mask = np.argmin(dist, axis=1) + 1
-mask = mask * isPartofPlane
+#mask = np.argmin(dist, axis=1) + 1
+#mask = mask * isPartofPlane
 
 # Visualize the point cloud
 point_cloud = o3d.geometry.PointCloud()
 point_cloud.points = o3d.utility.Vector3dVector(points)
 color = np.zeros((points.shape[0], 3))
 
-for i in range(1, min_idx+1):
+for i in range(1, 1+1):
     color[mask[i]==i] = np.random.rand(3)
 point_cloud.colors = o3d.utility.Vector3dVector(color)
 
