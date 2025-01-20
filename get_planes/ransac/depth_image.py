@@ -14,7 +14,7 @@ with open(data_csv, 'r') as f:
     reader = csv.reader(f)
     data = list(reader)
 
-data = data[34]
+data = data[104]
 #data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
 
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
@@ -30,11 +30,11 @@ EPSILON = 1/float(data[6]) # Resolution
 print("EPSILON", EPSILON)
 R = float(data[7]) # Maximum Range
 print("R", R)
-SIGMA = EPSILON * 10 # Normal std
+SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 5e4/(H*W)
-MAX_PLANE = 3
+MAX_PLANE = 6
 
 points, index = depth_to_pcd(depth, INTRINSICS)
 #information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
