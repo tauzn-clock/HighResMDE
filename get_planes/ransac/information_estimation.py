@@ -148,7 +148,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             distance = -np.dot(normal, A)
 
             # Count the number of inliers
-            error = np.abs((-distance/(np.dot(POINTS, normal.T)+1e-6)) - Z)
+            error = np.abs((-distance/(np.dot(direction_vector, normal.T)+1e-6)) - Z)
             trial_mask = error < TOLERANCE
             trial_mask = trial_mask & availability_mask
             trial_cnt = np.sum(trial_mask)

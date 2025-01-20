@@ -32,8 +32,8 @@ R = float(data[7]) # Maximum Range
 print("R", R)
 SIGMA = EPSILON * 10 # Normal std
 
-CONFIDENCE = 0.99
-INLIER_THRESHOLD = 2e4/(H*W)
+CONFIDENCE = 0.999
+INLIER_THRESHOLD = 5e4/(H*W)
 MAX_PLANE = 3
 
 points, index = depth_to_pcd(depth, INTRINSICS)
@@ -53,15 +53,15 @@ print("Information:", information)
 dist = points @ plane[1:min_idx+1,:3].T + np.stack([plane[1:min_idx+1,3]]*points.shape[0], axis=0)
 dist = np.abs(dist)
 isPartofPlane = mask != 0
-#mask = np.argmin(dist, axis=1) + 1
-#mask = mask * isPartofPlane
+mask = np.argmin(dist, axis=1) + 1
+mask = mask * isPartofPlane
 
 # Visualize the point cloud
 point_cloud = o3d.geometry.PointCloud()
 point_cloud.points = o3d.utility.Vector3dVector(points)
 color = np.zeros((points.shape[0], 3))
 
-for i in range(1, 1+1):
+for i in range(1, min_idx+1):
     color[mask[i]==i] = np.random.rand(3)
 point_cloud.colors = o3d.utility.Vector3dVector(color)
 
