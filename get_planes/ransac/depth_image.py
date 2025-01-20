@@ -1,10 +1,11 @@
 from process_depth_img import depth_to_pcd
-from information_estimation import default_ransac
+from information_estimation import default_ransac, plane_ransac
 import open3d as o3d
 import numpy as np
 import csv
 import os
 from PIL import Image
+import matplotlib.pyplot as plt
 
 root = "/scratchdata/processed/stair_down"
 data_csv = "/HighResMDE/src/nddepth_train_v2.csv"
@@ -16,15 +17,6 @@ with open(data_csv, 'r') as f:
 data = data[104]
 data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
 
-
-EPSILON = 1/float(data[6]) # Resolution
-R = float(data[7]) # Maximum Range
-SIGMA = EPSILON * 20 # Normal std
-
-CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.01
-MAX_PLANE = 3
-
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
 INTRINSICS = np.array(INTRINSICS)
 
@@ -34,16 +26,17 @@ H, W = depth.shape
 
 valid_mask = depth > 0
 
-# Downsample
-DOWN_SAMPLE_RATIO = 1
-keep_mask = np.zeros((H, W), dtype=bool)
-keep_mask[::DOWN_SAMPLE_RATIO, ::DOWN_SAMPLE_RATIO] = True
-valid_mask = valid_mask & keep_mask
+EPSILON = 1/float(data[6]) # Resolution
+R = float(data[7]) # Maximum Range
+SIGMA = EPSILON *6 # Normal std
+
+CONFIDENCE = 0.95
+INLIER_THRESHOLD = 2e4/(H*W)
+MAX_PLANE = 3
 
 points, index = depth_to_pcd(depth, INTRINSICS)
-print(points[:,2].max())
-
-information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
+#information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
+information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
 
 for i in range(MAX_PLANE+1):
     print(f"Cnt {i}", np.sum(mask[i]==i))
