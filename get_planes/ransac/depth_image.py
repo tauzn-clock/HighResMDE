@@ -6,7 +6,7 @@ import csv
 import os
 from PIL import Image
 
-root = "/scratchdata/nyu_depth_v2/sync"
+root = "/scratchdata/processed/stair_down"
 data_csv = "/HighResMDE/src/nddepth_train_v2.csv"
 
 with open(data_csv, 'r') as f:
@@ -14,22 +14,23 @@ with open(data_csv, 'r') as f:
     data = list(reader)
 
 data = data[104]
+data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
+
 
 EPSILON = 1/float(data[6]) # Resolution
 R = float(data[7]) # Maximum Range
-SIGMA = EPSILON * 5 # Normal std
+SIGMA = EPSILON * 20 # Normal std
 
-CONFIDENCE = 0.9
-INLIER_THRESHOLD = 0.1
-MAX_PLANE = 1
+CONFIDENCE = 0.99
+INLIER_THRESHOLD = 0.01
+MAX_PLANE = 3
 
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
 INTRINSICS = np.array(INTRINSICS)
-H = 480
-W = 640
 
 depth = Image.open(os.path.join(root, data[1]))
 depth = np.array(depth) /float(data[6])
+H, W = depth.shape
 
 valid_mask = depth > 0
 

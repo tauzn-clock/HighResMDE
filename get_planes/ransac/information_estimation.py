@@ -5,8 +5,10 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     assert(POINTS.shape[1] == 3)
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     N = POINTS.shape[0]
+    SPACE_STATES = np.log(R/EPSILON)
+    PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON)
 
-    TOLERANCE = (np.log(R/EPSILON) - np.log(SIGMA/EPSILON) - 0.5 * np.log(2*np.pi)) / (0.5 / SIGMA**2)
+    TOLERANCE = (SPACE_STATES - PER_POINT_INFO) / (0.5 / SIGMA**2)
     assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
     TOLERANCE = np.sqrt(TOLERANCE)
     print("TOLERANCE", TOLERANCE)
@@ -22,7 +24,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         availability_mask = valid_mask
     
     # O
-    information[0] = N * 3 * np.log(R/EPSILON)
+    information[0] = N * 3 * SPACE_STATES
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
@@ -67,10 +69,10 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         information[plane_cnt] =  information[plane_cnt-1]
         information[plane_cnt] -= N * np.log(plane_cnt) # Remove previous mask 
         information[plane_cnt] += N * np.log(plane_cnt+1) # New Mask that classify points
-        information[plane_cnt] += 3 * np.log(R/EPSILON) # New Plane
+        information[plane_cnt] += 3 * SPACE_STATES # New Plane
         total_error = np.sum(BEST_ERROR[BEST_INLIERS_MASK]**2) * 0.5 / SIGMA**2
-        information[plane_cnt] += total_error + 0.5 * np.log(2*np.pi) * BEST_INLIERS_CNT + np.log(SIGMA/EPSILON) * BEST_INLIERS_CNT
-        information[plane_cnt] -= BEST_INLIERS_CNT * np.log(R/EPSILON) # Information saving from inliers
+        information[plane_cnt] += total_error + PER_POINT_INFO * BEST_INLIERS_CNT
+        information[plane_cnt] -= BEST_INLIERS_CNT * SPACE_STATES # Information saving from inliers
 
         tmp_mask = mask[plane_cnt-1].copy()
         tmp_mask[BEST_INLIERS_MASK] = plane_cnt
