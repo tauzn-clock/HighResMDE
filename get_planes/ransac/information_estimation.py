@@ -102,11 +102,6 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     SPACE_STATES = np.log(R/EPSILON)
     PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON) - SPACE_STATES
 
-    TOLERANCE = (- PER_POINT_INFO) * SIGMA**2 / 0.5
-    assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
-    TOLERANCE = np.sqrt(TOLERANCE)
-    print("TOLERANCE", TOLERANCE)
-
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
     print("ITERATION", ITERATION)
 
@@ -155,7 +150,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             #print(normal, distance)
 
             # Count the number of inliers
-            error = np.abs(np.dot(POINTS, normal.T)+distance) 
+            error = np.abs((-distance/(np.dot(direction_vector, normal.T)+1e-6))*direction_vector[:,2] - Z)
             error = 0.5 * error**2 / SIGMA**2 + PER_POINT_INFO
             trial_mask = error < 0
             trial_mask = trial_mask & availability_mask
