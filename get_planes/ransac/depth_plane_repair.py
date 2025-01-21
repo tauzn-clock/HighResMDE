@@ -13,7 +13,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 DEVICE="cuda:0"
-ROOT = "/scratchdata/processed/stair_up"
+ROOT = "/scratchdata/processed/stair_down"
 DATA_CSV = "/HighResMDE/src/nddepth_train_v2.csv"
 
 with open(DATA_CSV, 'r') as f:
@@ -42,11 +42,11 @@ print("EPSILON", EPSILON)
 R = float(data[7]) # Maximum Range
 print("R", R)
 SIGMA = EPSILON * 5 # Normal std
-SIGMA = 0.01 * points[:,2]
+SIGMA = 0.02 * points[:,2]
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 1e5/(H*W)
-MAX_PLANE = 4
+MAX_PLANE = 3
 
 x, y = np.meshgrid(np.arange(W), np.arange(H))
 x = x.flatten()
@@ -59,7 +59,7 @@ direction_vector = np.vstack((x_3d, y_3d, z)).T
 direction_vector = direction_vector / (np.linalg.norm(direction_vector, axis=1)[:, None]+1e-7)
 
 sam = sam_model_registry["vit_h"](checkpoint="/scratchdata/sam_vit_h_4b8939.pth").to(DEVICE)
-mask_generator = SamAutomaticMaskGenerator(sam)
+mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.98)
 
 masks = mask_generator.generate(img)
 
@@ -68,16 +68,19 @@ print("Number of masks:", len(masks))
 global_mask = np.zeros((H, W)).flatten()
 total_planes = 0
 
-for i, mask in enumerate(masks):
+# Sort masks by stability score
 
-    valid_mask = mask["segmentation"] & (depth > 0)
+masks = sorted(masks, key=lambda x: x["stability_score"])
+new_depth = depth.copy()
+for i, sam_mask in enumerate(masks):
+    valid_mask = sam_mask["segmentation"] & (depth > 0)
     #valid_mask = depth > 0
 
     information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
 
     min_idx = np.argmin(information)
 
-    if min_idx!=0:
+    if min_idx==1:
         dist = points @ plane[1:min_idx+1,:3].T + np.stack([plane[1:min_idx+1,3]]*points.shape[0], axis=0)
         dist = np.abs(dist)
         isPartofPlane = mask != 0
@@ -87,9 +90,32 @@ for i, mask in enumerate(masks):
         best_mask = np.zeros_like(global_mask)
         for i in range(1, min_idx+1):
             best_mask[mask[i]==i] = i + total_planes
+            pred_depth = (-plane[i,3]/(np.dot(direction_vector, plane[i,:3].T)+1e-7))*direction_vector[:,2]
+            pred_depth = pred_depth.reshape(H, W)
+            pred_depth *= sam_mask["segmentation"]& (depth == 0)
+            new_depth += pred_depth
     
         global_mask += best_mask
         total_planes += min_idx
+
+plt.imsave("repaired_depth.png", new_depth)
+plt.imsave("no_measure_reparied.png", new_depth==0, cmap='gray')
+
+# Visualize the point cloud
+point_cloud = o3d.geometry.PointCloud()
+point_cloud.points = o3d.utility.Vector3dVector(points)
+color = np.zeros((points.shape[0], 3))
+
+print("TOTAL PLANES:", total_planes)
+
+for i in range(1, total_planes+1):
+    color[global_mask==i] = np.random.rand(3)
+point_cloud.colors = o3d.utility.Vector3dVector(color)
+
+o3d.visualization.draw_geometries([point_cloud])
+
+
+points, index = depth_to_pcd(new_depth, INTRINSICS)
 
 # Visualize the point cloud
 point_cloud = o3d.geometry.PointCloud()

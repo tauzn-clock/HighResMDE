@@ -11,7 +11,6 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON) - SPACE_STATES
 
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
-    print("ITERATION", ITERATION)
 
     information = np.full(MAX_PLANE+1, np.inf, dtype=float)
     mask = np.zeros((MAX_PLANE+1, N), dtype=int)
@@ -105,7 +104,6 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     TWO_SIGMA_SQUARE = 2 * (SIGMA**2 + 1e-7)
 
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
-    print("ITERATION", ITERATION)
 
     information = np.full(MAX_PLANE+1, np.inf, dtype=float)
     mask = np.zeros((MAX_PLANE+1, N), dtype=int)
@@ -149,7 +147,6 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             normal = np.cross(AB, AC)
             normal = normal / (np.linalg.norm(normal) + 1e-7)
             distance = -np.dot(normal, A)
-            #print(normal, distance)
 
             # Count the number of inliers
             error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
