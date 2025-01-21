@@ -59,7 +59,7 @@ direction_vector = np.vstack((x_3d, y_3d, z)).T
 direction_vector = direction_vector / (np.linalg.norm(direction_vector, axis=1)[:, None]+1e-7)
 
 sam = sam_model_registry["vit_h"](checkpoint="/scratchdata/sam_vit_h_4b8939.pth").to(DEVICE)
-mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.98)
+mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.90)
 
 masks = mask_generator.generate(img)
 
@@ -71,8 +71,14 @@ total_planes = 0
 # Sort masks by stability score
 
 masks = sorted(masks, key=lambda x: x["stability_score"])
-new_depth = depth.copy()
+
+visualise_mask = np.zeros((H, W))
 for i, sam_mask in enumerate(masks):
+    visualise_mask += sam_mask["segmentation"] * (i+1)
+plt.imsave("visualise_mask.png", visualise_mask)
+
+new_depth = depth.copy()
+for sam_i, sam_mask in enumerate(masks):
     valid_mask = sam_mask["segmentation"] & (depth > 0)
     #valid_mask = depth > 0
 
@@ -92,7 +98,8 @@ for i, sam_mask in enumerate(masks):
             best_mask[mask[i]==i] = i + total_planes
             pred_depth = (-plane[i,3]/(np.dot(direction_vector, plane[i,:3].T)+1e-7))*direction_vector[:,2]
             pred_depth = pred_depth.reshape(H, W)
-            pred_depth *= sam_mask["segmentation"]& (depth == 0)
+            pred_depth *= (sam_mask["segmentation"]& (depth == 0))
+            if pred_depth.max() > R or pred_depth.min() < 0: break
             new_depth += pred_depth
     
         global_mask += best_mask
@@ -113,7 +120,6 @@ for i in range(1, total_planes+1):
 point_cloud.colors = o3d.utility.Vector3dVector(color)
 
 o3d.visualization.draw_geometries([point_cloud])
-
 
 points, index = depth_to_pcd(new_depth, INTRINSICS)
 
