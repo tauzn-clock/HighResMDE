@@ -30,13 +30,14 @@ EPSILON = 1/float(data[6]) # Resolution
 print("EPSILON", EPSILON)
 R = float(data[7]) # Maximum Range
 print("R", R)
-SIGMA = EPSILON * 2 # Normal std
+SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.999
 INLIER_THRESHOLD = 5e4/(H*W)
 MAX_PLANE = 10
 
 points, index = depth_to_pcd(depth, INTRINSICS)
+SIGMA = 0.004 * points[:,2]
 #information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
 information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
 

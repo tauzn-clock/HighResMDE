@@ -53,7 +53,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             AB = B - A
             AC = C - A
             normal = np.cross(AB, AC)
-            normal = normal / (np.linalg.norm(normal) + 1e-6)
+            normal = normal / (np.linalg.norm(normal) + 1e-7)
             distance = -np.dot(normal, A)
 
             # Count the number of inliers
@@ -97,10 +97,12 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     y_3d = (y - cy) * Z / fy
     POINTS = np.vstack((x_3d, y_3d, Z)).T
 
-    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-6)
+    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 
     SPACE_STATES = np.log(R/EPSILON)
-    PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON) - SPACE_STATES
+    PER_POINT_INFO = np.log(SIGMA/EPSILON+1e-7) 
+    PER_POINT_INFO += 0.5 * np.log(2*np.pi) - SPACE_STATES
+    TWO_SIGMA_SQUARE = 2 * (SIGMA**2 + 1e-7)
 
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
     print("ITERATION", ITERATION)
@@ -145,13 +147,13 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             AB = B - A
             AC = C - A
             normal = np.cross(AB, AC)
-            normal = normal / (np.linalg.norm(normal) + 1e-6)
+            normal = normal / (np.linalg.norm(normal) + 1e-7)
             distance = -np.dot(normal, A)
             #print(normal, distance)
 
             # Count the number of inliers
-            error = np.abs((-distance/(np.dot(direction_vector, normal.T)+1e-6))*direction_vector[:,2] - Z)
-            error = 0.5 * error**2 / SIGMA**2 + PER_POINT_INFO
+            error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
+            error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
             trial_mask = error < 0
             trial_mask = trial_mask & availability_mask
             trial_error = error[trial_mask].sum()
