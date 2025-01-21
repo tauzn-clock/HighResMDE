@@ -5,13 +5,10 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     assert(POINTS.shape[1] == 3)
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     N = POINTS.shape[0]
+    if valid_mask is not None: TOTAL_NO_PTS = valid_mask.sum()
+    else: TOTAL_NO_PTS = POINTS.shape[0]
     SPACE_STATES = np.log(R/EPSILON)
     PER_POINT_INFO = 0.5 * np.log(2*np.pi) + np.log(SIGMA/EPSILON) - SPACE_STATES
-
-    TOLERANCE = (- PER_POINT_INFO) / (0.5 / SIGMA**2)
-    assert TOLERANCE > 0, "TOLERANCE must be positive, reduce the value of SIGMA"
-    TOLERANCE = np.sqrt(TOLERANCE)
-    print("TOLERANCE", TOLERANCE)
 
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
     print("ITERATION", ITERATION)
@@ -24,17 +21,23 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         availability_mask = valid_mask
     
     # O
-    information[0] = N * 3 * SPACE_STATES
+    information[0] = TOTAL_NO_PTS * 3 * SPACE_STATES
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
-        BEST_INLIERS_CNT = 0
+        #BEST_INLIERS_CNT = 0
         BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
-        BEST_ERROR = np.zeros(N, dtype=float)
+        BEST_ERROR = 0
         BEST_PLANE = np.zeros(4, dtype=float)
 
         available_index = np.linspace(0, N-1, N, dtype=int)
         available_index = np.where(availability_mask)[0]
+
+        information[plane_cnt] =  information[plane_cnt-1]
+        information[plane_cnt] -= TOTAL_NO_PTS * np.log(plane_cnt) # Remove previous mask 
+        information[plane_cnt] += TOTAL_NO_PTS * np.log(plane_cnt+1) # New Mask that classify points
+        information[plane_cnt] += 3 * SPACE_STATES # New Plane
+
         if (availability_mask).sum() < 3:
             break
 
@@ -54,24 +57,19 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
             distance = -np.dot(normal, A)
 
             # Count the number of inliers
-            error = np.abs(np.dot(POINTS, normal.T)+distance)
-            trial_mask = error < TOLERANCE
+            error = np.abs(np.dot(POINTS, normal.T)+distance) 
+            error = 0.5 * error**2 / SIGMA**2 + PER_POINT_INFO
+            trial_mask = error < 0
             trial_mask = trial_mask & availability_mask
-            trial_cnt = np.sum(trial_mask)
+            trial_error = error[trial_mask].sum()
 
-            if trial_cnt > BEST_INLIERS_CNT:
-                BEST_INLIERS_CNT = trial_cnt
+            if BEST_ERROR > trial_error:
+                #BEST_INLIERS_CNT = trial_cnt
                 BEST_INLIERS_MASK = trial_mask
                 BEST_PLANE = np.concatenate((normal, [distance]))
-                BEST_ERROR = error
+                BEST_ERROR = trial_error
         
-        information[plane_cnt] =  information[plane_cnt-1]
-        information[plane_cnt] -= N * np.log(plane_cnt) # Remove previous mask 
-        information[plane_cnt] += N * np.log(plane_cnt+1) # New Mask that classify points
-        information[plane_cnt] += 3 * SPACE_STATES # New Plane
-
-        total_error = np.sum(BEST_ERROR[BEST_INLIERS_MASK]**2) * 0.5 / SIGMA**2
-        information[plane_cnt] += total_error + PER_POINT_INFO * BEST_INLIERS_CNT
+        information[plane_cnt] += BEST_ERROR
 
         tmp_mask = mask[plane_cnt-1].copy()
         tmp_mask[BEST_INLIERS_MASK] = plane_cnt
@@ -86,6 +84,8 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     H, W = DEPTH.shape
     N = H * W
+    if valid_mask is not None: TOTAL_NO_PTS = valid_mask.sum()
+    else: TOTAL_NO_PTS = H * W
 
     # Direction vector, all projection rays go through origin
     x, y = np.meshgrid(np.arange(W), np.arange(H))
@@ -118,17 +118,23 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         availability_mask = valid_mask
     
     # O
-    information[0] = N * SPACE_STATES
+    information[0] = TOTAL_NO_PTS * SPACE_STATES
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
-        BEST_INLIERS_CNT = 0
+        #BEST_INLIERS_CNT = 0
         BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
-        BEST_ERROR = np.zeros(N, dtype=float)
+        BEST_ERROR = 0
         BEST_PLANE = np.zeros(4, dtype=float)
 
         available_index = np.linspace(0, N-1, N, dtype=int)
         available_index = np.where(availability_mask)[0]
+
+        information[plane_cnt] =  information[plane_cnt-1]
+        information[plane_cnt] -= TOTAL_NO_PTS * np.log(plane_cnt) # Remove previous mask 
+        information[plane_cnt] += TOTAL_NO_PTS * np.log(plane_cnt+1) # New Mask that classify points
+        information[plane_cnt] += 3 * SPACE_STATES # New Plane
+
         if (availability_mask).sum() < 3:
             break
 
@@ -149,24 +155,19 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             #print(normal, distance)
 
             # Count the number of inliers
-            error = np.abs((-distance/(np.dot(direction_vector, normal.T)+1e-6))*direction_vector[:,2] - Z)
-            #print(error.min(), error.max())
-            trial_mask = error < TOLERANCE
+            error = np.abs(np.dot(POINTS, normal.T)+distance) 
+            error = 0.5 * error**2 / SIGMA**2 + PER_POINT_INFO
+            trial_mask = error < 0
             trial_mask = trial_mask & availability_mask
-            trial_cnt = np.sum(trial_mask)
+            trial_error = error[trial_mask].sum()
 
-            if trial_cnt > BEST_INLIERS_CNT:
-                BEST_INLIERS_CNT = trial_cnt
+            if BEST_ERROR > trial_error:
+                #BEST_INLIERS_CNT = trial_cnt
                 BEST_INLIERS_MASK = trial_mask
                 BEST_PLANE = np.concatenate((normal, [distance]))
-                BEST_ERROR = error
+                BEST_ERROR = trial_error
         
-        information[plane_cnt] =  information[plane_cnt-1]
-        information[plane_cnt] -= N * np.log(plane_cnt) # Remove previous mask 
-        information[plane_cnt] += N * np.log(plane_cnt+1) # New Mask that classify points
-        information[plane_cnt] += 3 * SPACE_STATES # New Plane
-        total_error = np.sum(BEST_ERROR[BEST_INLIERS_MASK]**2) * 0.5 / (SIGMA**2)
-        information[plane_cnt] += total_error + PER_POINT_INFO * BEST_INLIERS_CNT
+        information[plane_cnt] += BEST_ERROR
 
         tmp_mask = mask[plane_cnt-1].copy()
         tmp_mask[BEST_INLIERS_MASK] = plane_cnt
