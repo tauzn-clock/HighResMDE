@@ -10,18 +10,21 @@ import open3d as o3d
 import csv
 import os
 from PIL import Image
+import time
 import matplotlib.pyplot as plt
 
 DEVICE="cuda:0"
-ROOT = "/scratchdata/processed/stair_down"
+ROOT = "/scratchdata/processed/stair_up"
 DATA_CSV = "/HighResMDE/src/nddepth_train_v2.csv"
+
+sam = sam_model_registry["vit_b"](checkpoint="/scratchdata/sam_vit_b_01ec64.pth").to(DEVICE)
 
 with open(DATA_CSV, 'r') as f:
     reader = csv.reader(f)
     data = list(reader)
 
 data = data[104]
-data = ["rgb/1.png", "depth/1.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
+data = ["rgb/89.png", "depth/89.png", 306.75604248046875, 306.7660827636719, 322.9314270019531, 203.91506958007812, 1, 2**16]
 
 INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
 INTRINSICS = np.array(INTRINSICS)
@@ -35,12 +38,12 @@ plt.imsave("measured_depth.png", depth)
 plt.imsave("no_measure.png", depth==0, cmap='gray')
 H, W = depth.shape
 
+START = time.time()
+
 points, index = depth_to_pcd(depth, INTRINSICS)
 
 EPSILON = 1/float(data[6]) # Resolution
-print("EPSILON", EPSILON)
 R = float(data[7]) # Maximum Range
-print("R", R)
 SIGMA = EPSILON * 5 # Normal std
 SIGMA = 0.02 * points[:,2]
 
@@ -58,7 +61,6 @@ y_3d = (y - cy) / fy
 direction_vector = np.vstack((x_3d, y_3d, z)).T
 direction_vector = direction_vector / (np.linalg.norm(direction_vector, axis=1)[:, None]+1e-7)
 
-sam = sam_model_registry["vit_h"](checkpoint="/scratchdata/sam_vit_h_4b8939.pth").to(DEVICE)
 mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.90)
 
 masks = mask_generator.generate(img)
@@ -72,10 +74,12 @@ total_planes = 0
 
 masks = sorted(masks, key=lambda x: x["stability_score"])
 
+"""
 visualise_mask = np.zeros((H, W))
 for i, sam_mask in enumerate(masks):
     visualise_mask += sam_mask["segmentation"] * (i+1)
 plt.imsave("visualise_mask.png", visualise_mask)
+"""
 
 new_depth = depth.copy()
 for sam_i, sam_mask in enumerate(masks):
@@ -104,6 +108,8 @@ for sam_i, sam_mask in enumerate(masks):
     
         global_mask += best_mask
         total_planes += min_idx
+
+print("Time taken:", time.time()-START)
 
 plt.imsave("repaired_depth.png", new_depth)
 plt.imsave("no_measure_reparied.png", new_depth==0, cmap='gray')

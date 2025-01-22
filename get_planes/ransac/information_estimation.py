@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 
-def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None):
+def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
     assert(POINTS.shape[1] == 3)
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     N = POINTS.shape[0]
@@ -40,7 +40,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
         if (availability_mask).sum() < 3:
             break
 
-        for _ in tqdm(range(ITERATION)):
+        for _ in tqdm(range(ITERATION), disable=not verbose):
             # Get 3 random points
             idx = np.random.choice(available_index, 3, replace=False)
 
@@ -79,7 +79,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     
     return information, mask, plane
 
-def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None):
+def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     H, W = DEPTH.shape
     N = H * W
@@ -133,7 +133,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         if (availability_mask).sum() < 3:
             break
 
-        for _ in tqdm(range(ITERATION)):
+        for _ in tqdm(range(ITERATION), disable=not verbose):
             # Get 3 random points
             idx = np.random.choice(available_index, 3, replace=False)
 
