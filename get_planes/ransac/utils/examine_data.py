@@ -11,7 +11,7 @@ img = Image.open(os.path.join(ROOT,"rgb",f"{frame_cnt}.png"))
 depth = Image.open(os.path.join(ROOT,"depth",f"{frame_cnt}.png"))
 print(np.array(depth).max())
 label = Image.open(os.path.join(ROOT,"labels",f"{frame_cnt}.png"))
-plane = Image.open(os.path.join(ROOT,"original_gt",f"plane_{frame_cnt}.png"))
+plane = Image.open(os.path.join(ROOT,"original_gt",f"{frame_cnt}.png"))
 
 plt.imsave("img.png", np.array(img))
 plt.imsave("depth.png", np.array(depth))

@@ -15,9 +15,9 @@ for frame_cnt in range(1, 1449+1):
     plane = Image.fromarray(plane)
     plane = plane.resize((640, 480), Image.NEAREST)
 
-    plane.save(f"/scratchdata/nyu_plane/original_gt/plane_{frame_cnt-1}.png")
+    plane.save(f"/scratchdata/nyu_plane/original_gt/{frame_cnt-1}.png")
 
-    with open(f"/scratchdata/nyu_plane/original_gt/plane_{frame_cnt-1}.csv", mode='w') as file:
+    with open(f"/scratchdata/nyu_plane/original_gt/{frame_cnt-1}.csv", mode='w') as file:
         writer = csv.writer(file)
         for i in range(plane_params.shape[0]):
             writer.writerow([plane_params[i][0], plane_params[i][1], plane_params[i][2]])
