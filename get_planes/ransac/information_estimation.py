@@ -13,7 +13,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - (INLIER_THRESHOLD)**3))
 
     information = np.full(MAX_PLANE+1, np.inf, dtype=float)
-    mask = np.zeros((MAX_PLANE+1, N), dtype=int)
+    mask = np.zeros(N, dtype=int)
     plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
     availability_mask = np.ones(N, dtype=bool)
     if valid_mask is not None:
@@ -69,10 +69,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
                 BEST_ERROR = trial_error
         
         information[plane_cnt] += BEST_ERROR
-
-        tmp_mask = mask[plane_cnt-1].copy()
-        tmp_mask[BEST_INLIERS_MASK] = plane_cnt
-        mask[plane_cnt] = tmp_mask
+        mask[BEST_INLIERS_MASK] = plane_cnt
         plane[plane_cnt] = BEST_PLANE
 
         availability_mask[BEST_INLIERS_MASK] = 0
@@ -106,7 +103,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
 
     information = np.full(MAX_PLANE+1, np.inf, dtype=float)
-    mask = np.zeros((MAX_PLANE+1, N), dtype=int)
+    mask = np.zeros(N, dtype=int)
     plane = np.zeros((MAX_PLANE+1, 4), dtype=float)
     availability_mask = np.ones(N, dtype=bool)
     if valid_mask is not None:
@@ -162,10 +159,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
                 BEST_ERROR = trial_error
         
         information[plane_cnt] += BEST_ERROR
-
-        tmp_mask = mask[plane_cnt-1].copy()
-        tmp_mask[BEST_INLIERS_MASK] = plane_cnt
-        mask[plane_cnt] = tmp_mask
+        mask[BEST_INLIERS_MASK] = plane_cnt
         plane[plane_cnt] = BEST_PLANE
 
         availability_mask[BEST_INLIERS_MASK] = 0
