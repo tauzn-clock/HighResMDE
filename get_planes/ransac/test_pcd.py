@@ -37,3 +37,38 @@ def get_plane(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
     
     return all_points
 
+def get_plane(H,W,INTRINSICS):
+    depth = np.zeros((H,W))
+
+    x, y = np.meshgrid(np.arange(W), np.arange(H))
+    x = x.flatten()
+    y = y.flatten()
+    fx, fy, cx, cy = INTRINSICS[0], INTRINSICS[5], INTRINSICS[2], INTRINSICS[6]
+    Z = np.ones_like(x)
+    x_3d = (x - cx) * Z / fx
+    y_3d = (y - cy) * Z / fy
+    POINTS = np.vstack((x_3d, y_3d, Z)).T
+    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
+
+    direction_vector = direction_vector.reshape(H,W,3)
+
+    distance = -5
+    normal = np.array([0,0,1])
+    normal = normal / np.linalg.norm(normal)
+
+    for i in range(H):
+        for j in range(W//2):
+            depth[i,j] = -distance/(np.dot(direction_vector[i,j], normal)+1e-7)*direction_vector[i,j,2]
+    
+    distance = -2
+    normal = np.array([1,0,1])
+    normal = normal / np.linalg.norm(normal)
+
+    for i in range(H):
+        for j in range(W//2, W):
+            depth[i,j] = -distance/(np.dot(direction_vector[i,j], normal)+1e-7)*direction_vector[i,j,2]
+
+    print(depth.min())
+    
+    return depth
+
