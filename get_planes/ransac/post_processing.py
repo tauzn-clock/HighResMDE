@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 
 def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, plane, valid_mask=None):
 
+    information_mask = information == np.inf
+    information = information[~information_mask]
+    plane = plane[~information_mask,:]
+
     H,W = depth.shape
 
     pts, _ = depth_to_pcd(depth, INTRINSICS)
@@ -13,7 +17,7 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
 
     pts_normal = Depth2Normal(pts.reshape(H,W,3), 1, 0.2)
         
-    plt.imsave("normal.png", (pts_normal+1)/2)
+    #plt.imsave("normal.png", (pts_normal+1)/2)
 
     # Calculate Information
 
@@ -56,7 +60,7 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
     
     tmp_mask = new_mask.reshape(H, W)
     tmp_mask[tmp_mask > min_idx] = 0
-    plt.imsave("mask.png", tmp_mask)
+    #plt.imsave("mask.png", tmp_mask)
     """
     tmp_normal = np.zeros_like(normal)
     for i in range(1, min_idx+1):
