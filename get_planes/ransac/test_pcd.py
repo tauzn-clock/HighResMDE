@@ -60,15 +60,13 @@ def get_plane(H,W,INTRINSICS):
         for j in range(W//2):
             depth[i,j] = -distance/(np.dot(direction_vector[i,j], normal)+1e-7)*direction_vector[i,j,2]
     
-    distance = -2
-    normal = np.array([1,0,1])
+    distance = 2
+    normal = np.array([1,0,-1])
     normal = normal / np.linalg.norm(normal)
 
     for i in range(H):
         for j in range(W//2, W):
             depth[i,j] = -distance/(np.dot(direction_vector[i,j], normal)+1e-7)*direction_vector[i,j,2]
-
-    print(depth.min())
     
     return depth
 

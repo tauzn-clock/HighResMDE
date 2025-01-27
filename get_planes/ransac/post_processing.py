@@ -12,9 +12,8 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
     direction_vector = pts / (np.linalg.norm(pts, axis=1, keepdims=True)+1e-7)
 
     pts_normal = Depth2Normal(pts.reshape(H,W,3), 1, None)
-    
-    tmp_normal = pts_normal.reshape(H*W, 3)
-    plt.imsave("normal.png", (tmp_normal+1)/2)
+        
+    plt.imsave("normal.png", (pts_normal+1)/2)
 
     # Calculate Information
 
@@ -35,8 +34,8 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
 
     pts_normal = pts_normal.reshape(H*W, 3)
     normal_error = np.abs(np.dot(pts_normal, normal.T))
-    normal_error[error > 0] = np.inf
-    new_mask = np.argmin(normal_error, axis=1) + 1
+    normal_error[error > 0] = - np.inf
+    new_mask = np.argmax(normal_error, axis=1) + 1
     new_mask = new_mask * (mask > 0)
 
     if valid_mask is not None: TOTAL_NO_PTS = valid_mask.sum()

@@ -37,7 +37,7 @@ R = float(data[7]) # Maximum Range
 SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.999
-INLIER_THRESHOLD = 4e4/(H*W)
+INLIER_THRESHOLD = 5e4/(H*W)
 MAX_PLANE = 2
 
 points, index = depth_to_pcd(depth, INTRINSICS)
