@@ -11,7 +11,7 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
     pts, _ = depth_to_pcd(depth, INTRINSICS)
     direction_vector = pts / (np.linalg.norm(pts, axis=1, keepdims=True)+1e-7)
 
-    pts_normal = Depth2Normal(pts.reshape(H,W,3), 1, None)
+    pts_normal = Depth2Normal(pts.reshape(H,W,3), 1, 0.2)
         
     plt.imsave("normal.png", (pts_normal+1)/2)
 
@@ -55,6 +55,7 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
     min_idx = np.argmin(new_information)
     
     tmp_mask = new_mask.reshape(H, W)
+    tmp_mask[tmp_mask > min_idx] = 0
     plt.imsave("mask.png", tmp_mask)
     """
     tmp_normal = np.zeros_like(normal)
