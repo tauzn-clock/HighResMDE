@@ -41,10 +41,10 @@ INLIER_THRESHOLD = 5e4/(H*W)
 MAX_PLANE = 10
 
 points, index = depth_to_pcd(depth, INTRINSICS)
-#SIGMA = 0.01 * points[:,2]
+SIGMA = 0.02 * points[:,2]
 #SIGMA = 2 * points[:,2]**2 + 1.4 * points[:,2] + 1.1057
-SIGMA = 9 * points[:,2]**2 - 26.5 * points[:,2] + 20.237
-SIGMA *= 1e-3
+#SIGMA = 9 * points[:,2]**2 - 26.5 * points[:,2] + 20.237
+#SIGMA *= 1e-3
 #information, mask, plane = default_ransac(points, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten())
 information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten(),verbose=True)
 

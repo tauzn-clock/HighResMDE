@@ -19,7 +19,7 @@ DEVICE="cuda:0"
 root = "/scratchdata/nyu_plane"
 data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
 
-sam = sam_model_registry["vit_b"](checkpoint="/scratchdata/sam_vit_b_01ec64.pth").to(DEVICE)
+sam = sam_model_registry["vit_h"](checkpoint="/scratchdata/sam_vit_h_4b8939.pth").to(DEVICE)
 mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.95)
 
 with open(data_csv, 'r') as f:
@@ -50,14 +50,11 @@ R = float(data[7]) # Maximum Range
 SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.1#5e4/(H*W)
+INLIER_THRESHOLD = 0.2#5e4/(H*W)
 MAX_PLANE = 8
 
 points, index = depth_to_pcd(depth, INTRINSICS)
 SIGMA = 0.02 * points[:,2]
-#SIGMA = 2 * points[:,2]**2 + 1.4 * points[:,2] + 1.1057
-SIGMA = 9 * points[:,2]**2 - 26.5 * points[:,2] + 20.237
-SIGMA *= 1e-3
 
 global_mask = np.zeros((H, W)).flatten()
 total_planes = 0
@@ -70,8 +67,9 @@ remaining_masks = np.ones_like(depth, dtype=bool)
 remaining_masks = remaining_masks & (depth > 0)
 
 for sam_i, sam_mask in enumerate(sam_masks):
-    plt.imsave("mask.png", sam_mask["segmentation"])
     valid_mask = sam_mask["segmentation"] & (depth > 0)
+    if valid_mask.sum() <= 200: continue
+    plt.imsave("mask.png", sam_mask["segmentation"])
     remaining_masks = remaining_masks & ~valid_mask
 
     information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten(),verbose=False)
@@ -88,19 +86,20 @@ for sam_i, sam_mask in enumerate(sam_masks):
 
     total_planes += min_idx
 
-information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, remaining_masks.flatten(),verbose=False)
+if True:
+    information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, remaining_masks.flatten(),verbose=False)
 
-# Post Processing
-information, mask, plane = post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, plane, remaining_masks)
+    # Post Processing
+    information, mask, plane = post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, plane, remaining_masks)
 
-print(information)
+    print(information)
 
-min_idx = np.argmin(information)
-print("Min Planes: ", min_idx)
-for i in range(1, min_idx+1):
-    global_mask[mask==i] = total_planes + i
+    min_idx = np.argmin(information)
+    print("Min Planes: ", min_idx)
+    for i in range(1, min_idx+1):
+        global_mask[mask==i] = total_planes + i
 
-total_planes += min_idx
+    total_planes += min_idx
 
 plt.imsave("mask.png", global_mask.reshape(H, W))
 

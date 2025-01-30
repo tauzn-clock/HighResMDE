@@ -77,6 +77,15 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     return information, mask, plane
 
 def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
+
+    def find_inliers(normal, distance):
+        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
+        error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
+        trial_mask = error < 0
+        trial_mask = trial_mask & availability_mask
+        trial_error = error[trial_mask].sum()
+        return trial_mask, trial_error
+
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     H, W = DEPTH.shape
     N = H * W
@@ -146,14 +155,17 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             distance = -np.dot(normal, A)
 
             # Count the number of inliers
-            error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
-            error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
-            trial_mask = error < 0
-            trial_mask = trial_mask & availability_mask
-            trial_error = error[trial_mask].sum()
+            trial_mask, trial_error = find_inliers(normal, distance)
 
-            if BEST_ERROR > trial_error:
-                #BEST_INLIERS_CNT = trial_cnt
+            if  trial_error < BEST_ERROR:
+                
+                
+                #SVD to find normal and distance
+                inliers = POINTS[trial_mask]
+                normal, distance = fit_plane(inliers)
+                trial_mask, trial_error = find_inliers(normal, distance)
+                
+
                 BEST_INLIERS_MASK = trial_mask
                 BEST_PLANE = np.concatenate((normal, [distance]))
                 BEST_ERROR = trial_error
@@ -165,3 +177,24 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         availability_mask[BEST_INLIERS_MASK] = 0
     
     return information, mask, plane
+
+def fit_plane(points):
+    # Compute the centroid (mean) of the points
+    centroid = np.mean(points, axis=0)
+    
+    # Shift the points to the centroid
+    shifted_points = points - centroid
+    
+    # Compute the covariance matrix
+    cov_matrix = np.dot(shifted_points.T, shifted_points) / len(points)
+    
+    # Perform eigenvalue decomposition
+    eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+    
+    # The normal vector is the eigenvector corresponding to the smallest eigenvalue
+    normal_vector = eigenvectors[:, np.argmin(eigenvalues)]
+    
+    # The equation of the plane is normal_vector . (x - centroid) = 0
+    D = -np.dot(normal_vector, centroid)
+    
+    return normal_vector, D
