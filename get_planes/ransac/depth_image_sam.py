@@ -51,7 +51,7 @@ SIGMA = EPSILON * 5 # Normal std
 
 CONFIDENCE = 0.99
 INLIER_THRESHOLD = 0.2#5e4/(H*W)
-MAX_PLANE = 8
+MAX_PLANE = 4
 
 points, index = depth_to_pcd(depth, INTRINSICS)
 SIGMA = 0.02 * points[:,2]
@@ -86,8 +86,9 @@ for sam_i, sam_mask in enumerate(sam_masks):
 
     total_planes += min_idx
 
+MAX_PLANE = 16
 if True:
-    information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, remaining_masks.flatten(),verbose=False)
+    information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, remaining_masks.flatten(),verbose=True)
 
     # Post Processing
     information, mask, plane = post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, plane, remaining_masks)
