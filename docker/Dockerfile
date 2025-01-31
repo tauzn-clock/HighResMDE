@@ -18,6 +18,7 @@ RUN /get_custom_scikit_image.sh
 
 RUN pip3 install matplotlib tqdm tensorboardX timm mmcv open3d xformers transformers mmcv-full ipykernel
 
-RUN git clone https://github.com/tauzn-clock/HighResMDE 
+RUN git clone --recurse-submodules https://github.com/tauzn-clock/HighResMDE 
+RUN cd /HighResMDE/segment-anything && pip3 install -e .
 WORKDIR /HighResMDE
 
