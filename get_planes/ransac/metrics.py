@@ -2,6 +2,9 @@
 import numpy as np
 import torch
 from PIL import Image
+import os
+import csv
+from visualise_mask import merge_mask
 
 def reassign_mask(mask, gt):
     new_mask = mask.copy()
@@ -88,9 +91,14 @@ if __name__ == "__main__":
         depth = Image.open(f"{ROOT}/depth/{index}.png")
         pred = Image.open(f"{ROOT}/new_gt/{index}.png")
         gt = Image.open(f"{ROOT}/original_gt/{index}.png")
+        with open(f"{ROOT}/new_gt/{index}.csv", 'r') as f:
+            reader = csv.reader(f)
+            csv_data = list(reader)
+        csv_data = np.array(csv_data, dtype=np.float32)
 
         depth = np.array(depth)
         pred = np.array(pred)
+        pred = merge_mask(pred, csv_data)
         gt = np.array(gt)
 
         valid_mask = gt > 0
