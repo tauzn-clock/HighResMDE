@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     avg = []
 
-    for index in range(100):
+    for index in range(1449):
         depth = Image.open(f"{ROOT}/depth/{index}.png")
         pred = Image.open(f"{ROOT}/new_gt/{index}.png")
         gt = Image.open(f"{ROOT}/original_gt/{index}.png")
