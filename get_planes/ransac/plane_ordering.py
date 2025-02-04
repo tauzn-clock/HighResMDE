@@ -10,7 +10,7 @@ import time
 import matplotlib.pyplot as plt
 from post_processing import post_processing
 from test_pcd import get_plane
-from visualise_mask import merge_mask
+from visualise import merge_mask, visualise_mask
 
 def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA):
     SPACE_STATES = np.log(R/EPSILON)
@@ -39,15 +39,11 @@ def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA):
     new_mask = np.zeros_like(mask)
     new_param = np.zeros_like(param)
 
-    print(store[:,0])
     index = np.argsort(store[:,0])[::-1]
     index = np.argsort(store[:,1])
     #index = np.argsort(store[:,2])
 
-    print(index)
-
     for i in range(len(index)):
-        print(store[index[i],0])
         new_mask[mask==index[i]+1] = i+1
         new_param[i] = param[index[i]]
 
@@ -96,16 +92,4 @@ for frame_cnt in range(0,len(DATA)):
     
     break
 
-points, _ = depth_to_pcd(depth, INTRINSICS) 
-
-# Visualize the point cloud
-point_cloud = o3d.geometry.PointCloud()
-point_cloud.points = o3d.utility.Vector3dVector(points)
-color = np.zeros((points.shape[0], 3))
-
-mask = mask.flatten()
-for i in range(1,10):
-    color[mask==i] = np.random.rand(3)
-point_cloud.colors = o3d.utility.Vector3dVector(color)
-
-o3d.visualization.draw_geometries([point_cloud])
+visualise_mask(depth, mask, INTRINSICS, 8)

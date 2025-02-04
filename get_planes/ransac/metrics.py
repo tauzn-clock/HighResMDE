@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 import os
 import csv
-from visualise_mask import merge_mask
+from visualise import merge_mask
 
 def reassign_mask(mask, gt):
     new_mask = mask.copy()
