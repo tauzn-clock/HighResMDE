@@ -78,15 +78,6 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     return information, mask, plane
 
 def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False, post_processing=False):
-
-    def find_inliers(normal, distance):
-        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
-        error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
-        trial_mask = error < 0
-        trial_mask = trial_mask & availability_mask
-        trial_error = error[trial_mask].sum()
-        return trial_mask, trial_error
-
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     H, W = DEPTH.shape
     N = H * W
@@ -155,13 +146,16 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             AC = C - A
             normal = np.cross(AB, AC)
             normal = normal / (np.linalg.norm(normal) + 1e-7)
-            distance = -np.dot(normal, A)
-
+            distance = -np.dot(normal, A)            
+            
             # Count the number of inliers
-            trial_mask, trial_error = find_inliers(normal, distance)
+            error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
+            error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
+            trial_mask = error < 0
+            trial_mask = trial_mask & availability_mask
+            trial_error = error[trial_mask].sum()
 
             if  trial_error < BEST_ERROR:
-                
                 
                 #SVD to find normal and distance
                 #inliers = POINTS[trial_mask]
@@ -184,6 +178,37 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     if post_processing:
         pts_normal = Depth2Normal(POINTS.reshape(H,W,3), 1, 0.2)
         pts_normal = pts_normal.reshape(H*W, 3)
+
+        distance = plane[1:,3]
+        normal = plane[1:,:3]
+
+        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2, None] - Z[:,None]) ** 2
+        error = error / TWO_SIGMA_SQUARE[:,None] + PER_POINT_INFO[:,None]
+
+        new_mask = np.argmin(error, axis=1) + 1
+        new_mask = new_mask * (mask > 0)
+
+        pts_normal = pts_normal.reshape(H*W, 3)
+        normal_error = np.abs(np.dot(pts_normal, normal.T))
+        normal_error[error > 0] = - np.inf
+        new_mask = np.argmax(normal_error, axis=1) + 1
+        new_mask = new_mask * (mask > 0)
+
+        if valid_mask is not None: TOTAL_NO_PTS = valid_mask.sum()
+        else: TOTAL_NO_PTS = H * W
+
+        new_information = np.zeros_like(information)
+        new_information[0] = information[0]
+        for plane_cnt in range(1, len(plane)):
+            new_information[plane_cnt] =  new_information[plane_cnt-1]
+            new_information[plane_cnt] -= TOTAL_NO_PTS * np.log(plane_cnt) # Remove previous mask 
+            new_information[plane_cnt] += TOTAL_NO_PTS * np.log(plane_cnt+1) # New Mask that classify points
+            new_information[plane_cnt] += 3 * SPACE_STATES # New Plane
+
+            new_information[plane_cnt] += error[new_mask == plane_cnt,plane_cnt-1].sum()
+        
+        information = new_information
+        mask = new_mask
 
     return information, mask, plane
 

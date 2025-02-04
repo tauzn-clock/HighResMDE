@@ -13,6 +13,7 @@ import time
 import matplotlib.pyplot as plt
 from post_processing import post_processing
 from visualise import visualise_pcd
+from test_pcd import get_plane
 
 #Set seed
 np.random.seed(0)
@@ -21,14 +22,30 @@ DEVICE="cuda:0"
 root = "/scratchdata/nyu_plane"
 data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
 
-sam = sam_model_registry["vit_b"](checkpoint="/scratchdata/sam_vit_b_01ec64.pth").to(DEVICE)
-mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.98)
+
+SIGMA_RATIO = 0.01
+
+CONFIDENCE = 0.99
+INLIER_THRESHOLD = 0.1
+MAX_PLANE = 8
+
+USE_SAM = True
+
+SAM_CONFIDENCE = 0.99
+SAM_INLIER_THRESHOLD = 0.2
+SAM_MAX_PLANE = 4
+
+POST_PROCESSING = False
+
+if USE_SAM: 
+    sam = sam_model_registry["default"](checkpoint="/scratchdata/sam_vit_h_4b8939.pth").to(DEVICE)
+    mask_generator = SamAutomaticMaskGenerator(sam, stability_score_thresh=0.98)
 
 with open(data_csv, 'r') as f:
     reader = csv.reader(f)
     DATA = list(reader)
 
-for frame_cnt in range(0,len(DATA)):
+for frame_cnt in range(len(DATA)):
     data = DATA[frame_cnt]
 
     INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
@@ -44,42 +61,51 @@ for frame_cnt in range(0,len(DATA)):
     EPSILON = 1/float(data[6]) # Resolution
     R = float(data[7]) # Maximum Range
 
-    CONFIDENCE = 0.99
-    INLIER_THRESHOLD = 0.2#5e4/(H*W)
-    MAX_PLANE = 4
-
     points, index = depth_to_pcd(depth, INTRINSICS)
-    SIGMA = 0.01 * points[:,2]
-
-    sam_masks = mask_generator.generate(img)
-    print(len(sam_masks))
-    masks = sorted(sam_masks, key=lambda x: x["stability_score"])
+    SIGMA = SIGMA_RATIO * points[:,2]
 
     global_mask = np.zeros((H, W), dtype=int).flatten()
+    global_planes = []
 
-    for sam_i, sam_mask in enumerate(sam_masks):
-        valid_mask = sam_mask["segmentation"] & (depth > 0)
+    if USE_SAM:
+        sam_masks = mask_generator.generate(img)
+        print(len(sam_masks))
+        masks = sorted(sam_masks, key=lambda x: x["stability_score"])
 
-        information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten(),verbose=False,post_processing=False)
+        
 
-        min_idx = np.argmin(information)
-        print("Min Planes: ", min_idx)
-        for i in range(1, min_idx+1):
-            global_mask[mask==i] = global_mask.max() + i
+        for sam_i, sam_mask in enumerate(sam_masks):
+            valid_mask = sam_mask["segmentation"] & (depth > 0)
 
-        break
+            information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, SAM_CONFIDENCE, SAM_INLIER_THRESHOLD, SAM_MAX_PLANE, valid_mask.flatten(),verbose=False,post_processing=POST_PROCESSING)
+
+            min_idx = np.argmin(information)
+            print("Min Planes: ", min_idx)
+            for i in range(1, min_idx+1):
+                global_mask[mask==i] = global_mask.max() + i
+                global_planes.append(plane[i])
 
     # Remaining points
-    INLIER_THRESHOLD = 0.1#5e4/(H*W)
-    MAX_PLANE = 2
     valid_mask = (global_mask == 0) & (depth > 0).flatten()
-    information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten(), verbose=True)
+    information, mask, plane = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, valid_mask.flatten(), verbose=True, post_processing=POST_PROCESSING)
 
     min_idx = np.argmin(information)
     print("Min Planes: ", min_idx)
     for i in range(1, min_idx+1):
         global_mask[mask==i] = global_mask.max() + i
+        global_planes.append(plane[i])
 
-    break
 
-visualise_pcd(points, global_mask)
+    #Save the planes
+    # Save the mask
+    global_mask = global_mask.reshape(H, W).astype(np.uint8)
+    print(global_mask.max())
+    plt.imsave("mask.png", global_mask)
+
+    mask_PIL = Image.fromarray(global_mask)
+    mask_PIL.save(os.path.join(root, "new_gt_2", f"{frame_cnt}.png"))
+
+    # Save the plane
+    with open(os.path.join(root, "new_gt_2", f"{frame_cnt}.csv"), 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(global_planes)
