@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+from depth_to_normal import Depth2Normal
 
 def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
     assert(POINTS.shape[1] == 3)
@@ -76,7 +77,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     
     return information, mask, plane
 
-def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
+def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False, post_processing=False):
 
     def find_inliers(normal, distance):
         error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
@@ -91,6 +92,9 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     N = H * W
     if valid_mask is not None: TOTAL_NO_PTS = valid_mask.sum()
     else: TOTAL_NO_PTS = H * W
+
+    if TOTAL_NO_PTS < 3:
+        return np.array([0]), np.zeros_like(DEPTH), np.zeros((1, 4), dtype=float)
 
     # Direction vector, all projection rays go through origin
     x, y = np.meshgrid(np.arange(W), np.arange(H))
@@ -123,7 +127,6 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
-        #BEST_INLIERS_CNT = 0
         BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
         BEST_ERROR = 0
         BEST_PLANE = np.zeros(4, dtype=float)
@@ -161,11 +164,10 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
                 
                 
                 #SVD to find normal and distance
-                inliers = POINTS[trial_mask]
-                normal, distance = fit_plane(inliers)
-                trial_mask, trial_error = find_inliers(normal, distance)
+                #inliers = POINTS[trial_mask]
+                #normal, distance = fit_plane(inliers)
+                #trial_mask, trial_error = find_inliers(normal, distance)
                 
-
                 BEST_INLIERS_MASK = trial_mask
                 BEST_PLANE = np.concatenate((normal, [distance]))
                 BEST_ERROR = trial_error
@@ -175,7 +177,14 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         plane[plane_cnt] = BEST_PLANE
 
         availability_mask[BEST_INLIERS_MASK] = 0
+
+        if information[plane_cnt] > information[plane_cnt-1]:
+            break
     
+    if post_processing:
+        pts_normal = Depth2Normal(POINTS.reshape(H,W,3), 1, 0.2)
+        pts_normal = pts_normal.reshape(H*W, 3)
+
     return information, mask, plane
 
 def fit_plane(points):

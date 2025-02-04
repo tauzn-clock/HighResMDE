@@ -54,19 +54,5 @@ def post_processing(depth, INTRINSICS, R, EPSILON, SIGMA, information, mask, pla
         new_information[plane_cnt] += 3 * SPACE_STATES # New Plane
 
         new_information[plane_cnt] += error[new_mask == plane_cnt,plane_cnt-1].sum()
-
-    # Visualise
-    min_idx = np.argmin(new_information)
-    
-    tmp_mask = new_mask.reshape(H, W)
-    tmp_mask[tmp_mask > min_idx] = 0
-    #plt.imsave("mask.png", tmp_mask)
-    """
-    tmp_normal = np.zeros_like(normal)
-    for i in range(1, min_idx+1):
-        print((tmp_mask==i).shape)
-        tmp_normal[tmp_mask == i,:] = plane[i][:3]
-    plt.imsave("plane.png", (tmp_normal+1)/2)
-    """
-
+        
     return new_information, new_mask, plane
