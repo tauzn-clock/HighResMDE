@@ -5,19 +5,22 @@ from PIL import Image
 import csv
 import os
 
-def filter_mask(mask, THRESHOLD=100):
+def filter_mask(mask, csv_data):
     new_mask = np.zeros_like(mask)
+    new_csv_data = []
     next_label = 1
     for i in range(1, mask.max()+1):
-        if np.sum(mask==i) > THRESHOLD:
+        if np.sum(mask==i) > 0:
             new_mask[mask==i] = next_label
+            new_csv_data.append(csv_data[i-1])
             next_label += 1
-    return new_mask
+    return new_mask, np.array(new_csv_data)
 
 def merge_mask(mask, csv_data, ANGLE_THRESHOLD=0.1, DIST_THRESHOLD=0.1):
     N = csv_data.shape[0]
 
     new_mask = np.zeros_like(mask)
+    new_csv_data = np.zeros_like(csv_data)
     index = np.linspace(0, N-1, N, dtype=np.int32)
 
     csv_data[csv_data[:,3] <0] *= -1
@@ -35,8 +38,13 @@ def merge_mask(mask, csv_data, ANGLE_THRESHOLD=0.1, DIST_THRESHOLD=0.1):
                 best_dist = dist
         new_mask[mask==i+1] = index[closest]+1
         index[i] = index[closest]
+        if i == closest:
+            new_csv_data[i] = csv_data[closest]
+        else:
+            total = mask[mask==i+1].sum() + mask[mask==closest+1].sum()
+            new_csv_data[i] = (csv_data[i]*mask[mask==i+1].sum() + csv_data[closest]*mask[mask==closest+1].sum())/total
         
-    return filter_mask(new_mask,200)
+    return filter_mask(new_mask,new_csv_data)
 
 def visualise_mask(depth, mask, intrinsics):
     points, _ = depth_to_pcd(depth, intrinsics) 
@@ -79,6 +87,6 @@ if __name__ == '__main__':
     csv_data = np.array(csv_data, dtype=np.float32)
 
     print(mask.max())
-    mask = merge_mask(mask, csv_data)
+    mask, csv_data = merge_mask(mask, csv_data)
     print(mask.max())
     visualise_mask(depth, mask, INTRINSICS)

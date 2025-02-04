@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
         depth = np.array(depth)
         pred = np.array(pred)
-        pred = merge_mask(pred, csv_data)
+        pred, _ = merge_mask(pred, csv_data)
         gt = np.array(gt)
 
         valid_mask = gt > 0
