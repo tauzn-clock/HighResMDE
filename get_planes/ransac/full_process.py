@@ -21,7 +21,7 @@ np.random.seed(0)
 DEVICE="cuda:0"
 root = "/scratchdata/nyu_plane"
 data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
-
+TARGET_FOLDER = "new_gt_20240205"
 
 SIGMA_RATIO = 0.01
 
@@ -103,10 +103,10 @@ for frame_cnt in range(len(DATA)):
     plt.imsave("mask.png", global_mask)
 
     mask_PIL = Image.fromarray(global_mask)
-    mask_PIL.save(os.path.join(root, "new_gt_2", f"{frame_cnt}.png"))
+    mask_PIL.save(os.path.join(root, TARGET_FOLDER, f"{frame_cnt}.png"))
 
     # Save the plane
-    with open(os.path.join(root, "new_gt_2", f"{frame_cnt}.csv"), 'w') as f:
+    with open(os.path.join(root, TARGET_FOLDER, f"{frame_cnt}.csv"), 'w') as f:
         writer = csv.writer(f)
         writer.writerows(global_planes)
 
