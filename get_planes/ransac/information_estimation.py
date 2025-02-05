@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from tqdm import tqdm
 from depth_to_normal import Depth2Normal
 
@@ -97,7 +98,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     y_3d = (y - cy) * Z / fy
     POINTS = np.vstack((x_3d, y_3d, Z)).T
 
-    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
+    DIRECTION_VECTOR = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 
     SPACE_STATES = np.log(R/EPSILON)
     PER_POINT_INFO = np.log(SIGMA/(EPSILON+1e-7) + 1e-7)
@@ -129,7 +130,8 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         if (availability_mask).sum() < 3:
             break
         
-        idx = np.random.choice(available_index, (ITERATION, 3), replace=False)
+        if verbose: start = time.time()
+        idx = np.random.choice(available_index, (ITERATION, 3))
         A = POINTS[idx[:,0]]
         B = POINTS[idx[:,1]]
         C = POINTS[idx[:,2]]
@@ -140,16 +142,20 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         normal = normal/(np.linalg.norm(normal,axis=1) + 1e-7)[:,None]
         distance = np.sum(- normal * A, axis=1)
 
-        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[:,None]) ** 2
-        error = error / TWO_SIGMA_SQUARE[:,None] + PER_POINT_INFO[:,None]
-        error = error * availability_mask[:,None]
+        direction_vector = DIRECTION_VECTOR[availability_mask]
+
+        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[availability_mask,None]) ** 2
+        error = error / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
+        #error = error * availability_mask[:,None]
         error = np.clip(error,a_min=-np.inf,a_max=0)
         error_sum = np.sum(error,axis=0)
         best_index = np.argmin(error_sum)
 
-        BEST_INLIERS_MASK = error[:,best_index] < 0
+        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
+        BEST_INLIERS_MASK[np.arange(0, N)[availability_mask][error[:,best_index] < 0]] = 1
         BEST_ERROR = error_sum[best_index]
         BEST_PLANE = np.concatenate((normal[best_index],distance[best_index,None]))
+        if verbose: print(time.time()-start)
 
         """
 

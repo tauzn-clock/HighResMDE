@@ -12,7 +12,7 @@ from PIL import Image
 import time
 import matplotlib.pyplot as plt
 from post_processing import post_processing
-from visualise import visualise_pcd
+from visualise import visualise_pcd, visualise_mask
 from test_pcd import get_plane
 
 #Set seed
@@ -109,3 +109,5 @@ for frame_cnt in range(len(DATA)):
     with open(os.path.join(root, "new_gt_2", f"{frame_cnt}.csv"), 'w') as f:
         writer = csv.writer(f)
         writer.writerows(global_planes)
+
+visualise_mask(depth, global_mask, INTRINSICS)
