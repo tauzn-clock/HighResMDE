@@ -82,7 +82,7 @@ for frame_cnt in range(len(DATA)):
             min_idx = np.argmin(information)
             print("Min Planes: ", min_idx)
             for i in range(1, min_idx+1):
-                global_mask[mask==i] = global_mask.max() + i
+                global_mask[mask==i] = global_mask.max() + 1
                 global_planes.append(plane[i])
 
     # Remaining points
@@ -92,7 +92,7 @@ for frame_cnt in range(len(DATA)):
     min_idx = np.argmin(information)
     print("Min Planes: ", min_idx)
     for i in range(1, min_idx+1):
-        global_mask[mask==i] = global_mask.max() + i
+        global_mask[mask==i] = global_mask.max() + 1
         global_planes.append(plane[i])
 
 
