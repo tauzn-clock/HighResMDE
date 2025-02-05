@@ -4,6 +4,7 @@ import open3d as o3d
 from PIL import Image
 import csv
 import os
+from metrics import plane_ordering
 
 def merge_mask(mask, csv_data, ANGLE_THRESHOLD=0.1, DIST_THRESHOLD=0.1):
     N = csv_data.shape[0]
@@ -104,6 +105,8 @@ def visualise_pcd(points, mask, index=None):
 if __name__ == '__main__':
     root = "/scratchdata/nyu_plane"
     data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
+    SIGMA_RATIO = 0.01
+    FOLDER = "new_gt_20240205"
 
     with open(data_csv, 'r') as f:
         reader = csv.reader(f)
@@ -113,20 +116,23 @@ if __name__ == '__main__':
 
     data = DATA[INDEX]
 
-    INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
-    INTRINSICS = np.array(INTRINSICS)
+    EPSILON = 1/float(data[6]) # Resolution
+    R = float(data[7]) # Maximum Range
+
+    INTRINSICS = np.array([float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0]) # fx, fy, cx, cy
 
     depth = np.array(Image.open(os.path.join(root, data[1])))/float(data[6])
     mask = np.array(Image.open(os.path.join(root, "original_gt", f"{INDEX}.png")))
-    mask = np.array(Image.open(os.path.join(root, "new_gt", f"{INDEX}.png")))
+    mask = np.array(Image.open(os.path.join(root, FOLDER, f"{INDEX}.png")))
 
-    with open(os.path.join(root, "new_gt", f"{INDEX}.csv"), 'r') as f:
+    points, index = depth_to_pcd(depth, INTRINSICS)
+    SIGMA = SIGMA_RATIO * points[:,2]
+
+    with open(os.path.join(root, FOLDER, f"{INDEX}.csv"), 'r') as f:
         reader = csv.reader(f)
-        csv_data = list(reader)
+        csv_data = np.array(list(reader), dtype=np.float32)
 
-    csv_data = np.array(csv_data, dtype=np.float32)
+    mask = mask.flatten()
+    mask, csv_data = plane_ordering(points, mask, csv_data, R, EPSILON, SIGMA,keep_index=8)
 
-    print(mask.max())
-    mask, csv_data = merge_mask(mask, csv_data)
-    print(mask.max())
     visualise_mask(depth, mask, INTRINSICS)

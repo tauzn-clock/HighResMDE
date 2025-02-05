@@ -4,22 +4,55 @@ import torch
 from PIL import Image
 import os
 import csv
-from visualise import merge_mask
+from process_depth_img import depth_to_pcd
 
-def reassign_mask(mask, gt):
-    new_mask = mask.copy()
-    for i in range(1, mask.max()+1):
-        best_intersection = 0
-        best_j = 0
-        for j in range(1, gt.max()+1):
-            intersection = np.sum((mask==i)&(gt==j))
-            if intersection > best_intersection:
-                best_intersection = intersection
-                best_j = j
-        new_mask[mask==best_j] = i
-        new_mask[mask==i] = best_j
-        
-    return new_mask
+def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000):
+    def remove_mask_with_zero_area(mask, param):
+        new_mask = np.zeros_like(mask)
+        new_param = []
+        for i in range(1, mask.max()+1):
+            if np.sum(mask==i) > 0:
+                new_mask[mask==i] = len(new_param)+1
+                new_param.append(param[i-1])
+        return new_mask, np.array(new_param)
+
+    mask, param = remove_mask_with_zero_area(mask, param)
+
+    SPACE_STATES = np.log(R/EPSILON)
+    PER_POINT_INFO = np.log(SIGMA/(EPSILON+1e-7) + 1e-7)
+    PER_POINT_INFO += 0.5 * np.log(2*np.pi) - SPACE_STATES
+    TWO_SIGMA_SQUARE = 2 * (SIGMA**2 + 1e-7)
+
+    direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
+
+    store = []
+
+    for i in range(len(param)):
+        norm = param[i,:3]
+        d = param[i,3]
+        masked_pts = POINTS[mask==i+1]
+        masked_direction_vector = direction_vector[mask==i+1]
+        masked_z = POINTS[mask==i+1][:,2]
+
+        error = ((-d/(np.dot(masked_direction_vector, norm.T)+1e-7))*masked_direction_vector[:,2] - masked_z) ** 2
+        error = error / TWO_SIGMA_SQUARE[mask==i+1] + PER_POINT_INFO[mask==i+1]
+
+        store.append((len(error), error.sum(), error.mean()))
+    
+    store = np.array(store)
+
+    new_mask = np.zeros_like(mask)
+    new_param = np.zeros_like(param)
+
+    #index = np.argsort(store[:,0])[::-1]
+    index = np.argsort(store[:,1])
+    #index = np.argsort(store[:,2])
+
+    for i in range(min(len(index),keep_index)):
+        new_mask[mask==index[i]+1] = i+1
+        new_param[i] = param[index[i]]
+
+    return new_mask, new_param
 
 def evaluateMasks(predSegmentations, gtSegmentations, device, printInfo=False):
     """
@@ -84,34 +117,45 @@ def evaluateMasks(predSegmentations, gtSegmentations, device, printInfo=False):
 
 if __name__ == "__main__":
     ROOT = "/scratchdata/nyu_plane"
+    FOLDER = "new_gt_20240205"
+    SIGMA_RATIO = 0.01
+    data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
+
+    with open(data_csv, 'r') as f:
+        reader = csv.reader(f)
+        DATA = list(reader)
 
     avg = []
 
-    for index in range(1449):
-        depth = Image.open(f"{ROOT}/depth/{index}.png")
-        pred = Image.open(f"{ROOT}/new_gt/{index}.png")
-        gt = Image.open(f"{ROOT}/original_gt/{index}.png")
-        with open(f"{ROOT}/new_gt/{index}.csv", 'r') as f:
+    for frame_cnt in range(0,11):#len(DATA)):
+        data = DATA[frame_cnt]
+        INTRINSICS = np.array([float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0]) # fx, fy, cx, cy
+
+        EPSILON = 1/float(data[6]) # Resolution
+        R = float(data[7]) # Maximum Range
+
+        depth = np.array(Image.open(os.path.join(ROOT, data[1])))/float(data[6])
+        H, W = depth.shape
+
+        points, index = depth_to_pcd(depth, INTRINSICS)
+        SIGMA = SIGMA_RATIO * points[:,2]
+
+        pred = np.array(Image.open(f"{ROOT}/{FOLDER}/{frame_cnt}.png")).flatten()
+        gt = np.array(Image.open(f"{ROOT}/original_gt/{frame_cnt}.png")).flatten()
+        with open(f"{ROOT}/{FOLDER}/{frame_cnt}.csv", 'r') as f:
             reader = csv.reader(f)
-            csv_data = list(reader)
-        csv_data = np.array(csv_data, dtype=np.float32)
+            csv_data = np.array(list(reader), dtype=np.float32)
 
-        depth = np.array(depth)
-        pred = np.array(pred)
-        pred, _ = merge_mask(pred, csv_data)
-        gt = np.array(gt)
+        pred, csv_data = plane_ordering(points, pred, csv_data, R, EPSILON, SIGMA,keep_index=100)
 
-        valid_mask = gt > 0
+        valid_mask = depth.flatten() > 0
         pred = pred[valid_mask]
         gt = gt[valid_mask]
 
-        #pred = reassign_mask(pred, gt)
-
         pred = pred.reshape(-1, 1)
         gt = gt.reshape(-1, 1)
-        
+
         avg.append(evaluateMasks(pred, gt, torch.device("cpu")))
-        print(index)
     
     avg = np.array(avg)
     print(avg.mean(0))
