@@ -118,10 +118,6 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
 
     # nP + 0
     for plane_cnt in range(1, MAX_PLANE+1):
-        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
-        BEST_ERROR = 0
-        BEST_PLANE = np.zeros(4, dtype=float)
-
         available_index = np.linspace(0, N-1, N, dtype=int)
         available_index = np.where(availability_mask)[0]
 
@@ -132,6 +128,34 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
 
         if (availability_mask).sum() < 3:
             break
+        
+        idx = np.random.choice(available_index, (ITERATION, 3), replace=False)
+        A = POINTS[idx[:,0]]
+        B = POINTS[idx[:,1]]
+        C = POINTS[idx[:,2]]
+
+        AB = B-A
+        AC = C-A
+        normal = np.cross(AB,AC)
+        normal = normal/(np.linalg.norm(normal,axis=1) + 1e-7)[:,None]
+        distance = np.sum(- normal * A, axis=1)
+
+        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[:,None]) ** 2
+        error = error / TWO_SIGMA_SQUARE[:,None] + PER_POINT_INFO[:,None]
+        error = error * availability_mask[:,None]
+        error = np.clip(error,a_min=-np.inf,a_max=0)
+        error_sum = np.sum(error,axis=0)
+        best_index = np.argmin(error_sum)
+
+        BEST_INLIERS_MASK = error[:,best_index] < 0
+        BEST_ERROR = error_sum[best_index]
+        BEST_PLANE = np.concatenate((normal[best_index],distance[best_index,None]))
+
+        """
+
+        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
+        BEST_ERROR = 0
+        BEST_PLANE = np.zeros(4, dtype=float)
 
         for _ in tqdm(range(ITERATION), disable=not verbose):
             # Get 3 random points
@@ -166,6 +190,8 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
                 BEST_PLANE = np.concatenate((normal, [distance]))
                 BEST_ERROR = trial_error
         
+        """
+
         information[plane_cnt] += BEST_ERROR
         mask[BEST_INLIERS_MASK] = plane_cnt
         plane[plane_cnt] = BEST_PLANE
