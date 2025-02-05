@@ -2,18 +2,15 @@ import sys
 sys.path.append('/HighResMDE/segment-anything')
 
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-from process_depth_img import depth_to_pcd
+from depth_to_pcd import depth_to_pcd
 from information_estimation import plane_ransac
-import open3d as o3d
 import numpy as np
 import csv
 import os
 from PIL import Image
 import time
 import matplotlib.pyplot as plt
-from post_processing import post_processing
 from visualise import visualise_pcd, visualise_mask
-from test_pcd import get_plane
 
 #Set seed
 np.random.seed(0)

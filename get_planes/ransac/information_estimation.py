@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from tqdm import tqdm
-from depth_to_normal import Depth2Normal
+from depth_to_normal import depth_to_normal
 
 def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False):
     assert(POINTS.shape[1] == 3)
@@ -208,7 +208,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             break
     
     if post_processing:
-        pts_normal = Depth2Normal(POINTS.reshape(H,W,3), 1, 0.2)
+        pts_normal = depth_to_normal(POINTS.reshape(H,W,3), 1, 0.2)
         pts_normal = pts_normal.reshape(H*W, 3)
 
         distance = plane[1:,3]

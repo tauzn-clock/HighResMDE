@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 import os
 import csv
-from process_depth_img import depth_to_pcd
+from depth_to_pcd import depth_to_pcd
 
 def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000):
     def remove_mask_with_zero_area(mask, param):

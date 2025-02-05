@@ -4,7 +4,7 @@ sys.path.append('/HighResMDE/segment-anything')
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from PIL import Image
 import numpy as np
-from process_depth_img import depth_to_pcd
+from depth_to_pcd import depth_to_pcd
 from information_estimation import default_ransac, plane_ransac
 import open3d as o3d
 import csv

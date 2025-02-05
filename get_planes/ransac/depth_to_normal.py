@@ -3,10 +3,10 @@ import csv
 import os
 from PIL import Image
 import matplotlib.pyplot as plt
-from process_depth_img import depth_to_pcd
+from depth_to_pcd import depth_to_pcd
 from scipy.ndimage import gaussian_filter
 
-def Depth2Normal(pt, s, gaussian_kernel):
+def depth_to_normal(pt, s, gaussian_kernel):
     padded_pt = np.pad(pt, ((s, s), (s, s), (0, 0)), mode='constant')
     dx = (padded_pt[s:-s, 2*s:, :] - padded_pt[s:-s, :-2*s, :])
     dy = (padded_pt[2*s:, s:-s, :] - padded_pt[:-2*s, s:-s, :])
@@ -38,6 +38,6 @@ if __name__ == "__main__":
     pt, _ = depth_to_pcd(depth, INTRINSICS)
     H, W = depth.shape
     pt = pt.reshape(H,W, 3)
-    normal = Depth2Normal(pt, 1, None)
+    normal = depth_to_normal(pt, 1, None)
 
     plt.imsave("normal.png", (normal+1)/2)
