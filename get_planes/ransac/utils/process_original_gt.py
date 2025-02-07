@@ -13,7 +13,10 @@ for frame_cnt in range(1, 1449+1):
 
     plane = plane.astype(np.uint8)
     plane = Image.fromarray(plane)
-    plane = plane.resize((640, 480), Image.NEAREST)
+    plane = plane.resize((560, 426), Image.NEAREST)
+    new_plane = np.zeros((480, 640), dtype=np.uint8)
+    new_plane[45:471, 41:601] = np.array(plane)
+    plane = Image.fromarray(new_plane)
 
     plane.save(f"/scratchdata/nyu_plane/original_gt/{frame_cnt-1}.png")
 
