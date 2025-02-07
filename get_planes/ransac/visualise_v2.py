@@ -8,7 +8,7 @@ from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
 import matplotlib.pyplot as plt
 
-def save_img(pcd, filename):
+def pcd_to_img(pcd):
     # Visualizer
     vis = o3d.visualization.Visualizer()
     vis.create_window()
@@ -23,25 +23,38 @@ def save_img(pcd, filename):
     view_control.set_zoom(0.6) 
     view_control.rotate(100.0, 100.0)
 
-    image = np.array(vis.capture_screen_float_buffer(True))
-    print(image[0,0])
+    return np.array(vis.capture_screen_float_buffer(True))
+def shrink_pcd_img(ori,gt,pred,INDEX):
+    def get_bounding_box(mask):
+        left = mask.shape[1]
+        right = 0
+        top = mask.shape[0]
+        bottom = 0
 
-    left = image.shape[1]
-    right = 0
-    top = image.shape[0]
-    bottom = 0
+        for i in range(mask.shape[0]):
+            for j in range(mask.shape[1]):
+                if np.sum(mask[i,j]) < 3:
+                    left = min(left, j)
+                    right = max(right, j)
+                    top = min(top, i)
+                    bottom = max(bottom, i)
+        
+        return left, right, top, bottom
 
-    for i in range(image.shape[0]):
-        for j in range(image.shape[1]):
-            if np.sum(image[i,j,:]) < 3:
-                left = min(left, j)
-                right = max(right, j)
-                top = min(top, i)
-                bottom = max(bottom, i)
+    left_ori, right_ori, top_ori, bottom_ori = get_bounding_box(ori)
+    left_gt, right_gt, top_gt, bottom_gt = get_bounding_box(gt)
+    left_pred, right_pred, top_pred, bottom_pred = get_bounding_box(pred)
+
+    left = min(left_ori, left_gt, left_pred)
+    right = max(right_ori, right_gt, right_pred)
+    top = min(top_ori, top_gt, top_pred)
+    bottom = max(bottom_ori, bottom_gt, bottom_pred)
 
     print(left, right, top, bottom)
 
-    plt.imsave(filename, image[top:bottom, left:right])
+    plt.imsave(f"paper_images/pcd_ori_{INDEX}.png", ori[top:bottom, left:right])
+    plt.imsave(f"paper_images/pcd_gt_{INDEX}.png", gt[top:bottom, left:right])
+    plt.imsave(f"paper_images/pcd_pred_{INDEX}.png", pred[top:bottom, left:right])
 
 def fuse_coord_with_color(coord, color, mask):
     coord = coord.reshape(-1, 3)
@@ -108,7 +121,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 0
+    INDEX = 1409
 
     data = DATA[INDEX]
 
@@ -129,38 +142,46 @@ if __name__ == '__main__':
         pred_csv = np.array(list(reader), dtype=np.float32)
     
     #Original RGB
-    plt.imsave(f"rgb_{INDEX}.png", rgb[45:471, 41:601])
+    plt.imsave(f"paper_images/rgb_{INDEX}.png", rgb[45:471, 41:601])
 
     #GT Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
     ax.imshow(gt_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"gt_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"paper_images/gt_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
 
     #Pred Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
     ax.imshow(pred_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"pred_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"paper_images/pred_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
     
     #Original PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd = transform(pcd)
-    save_img(pcd, f"pcd_ori_{INDEX}.png")
+    pcd_ori = transform(pcd)
+    ori_pcd_img = pcd_to_img(pcd_ori)
 
     #GT PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
     full_gt_csv = find_distance_for_gt_planes(coord, gt_csv, gt_mask)
     coord = csv_to_depth(gt_mask, full_gt_csv, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd = transform(pcd)
-    save_img(pcd, f"pcd_gt_{INDEX}.png")
+    pcd_gt = transform(pcd)
+    gt_pcd_img = pcd_to_img(pcd_gt)
 
     #Pred PCD
     coord = csv_to_depth(pred_mask, pred_csv, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd = transform(pcd)
-    save_img(pcd, f"pcd_pred_{INDEX}.png")
+    pcd_pred = transform(pcd)
+    pred_pcd_img = pcd_to_img(pcd_pred)
+
+    shrink_pcd_img(ori_pcd_img,gt_pcd_img,pred_pcd_img,INDEX)
+
+"""
+Smallest RI:  1409
+Largest VOI:  1207
+Smallest SC:  1207
+"""

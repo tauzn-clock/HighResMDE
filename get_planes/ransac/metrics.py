@@ -117,7 +117,7 @@ def evaluateMasks(predSegmentations, gtSegmentations, device, printInfo=False):
 
 if __name__ == "__main__":
     ROOT = "/scratchdata/nyu_plane"
-    FOLDER = "new_gt_20240205"
+    FOLDER = "new_gt_sigma_1"
     SIGMA_RATIO = 0.01
     data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     avg = []
 
-    for frame_cnt in range(0,11):#len(DATA)):
+    for frame_cnt in range(0,len(DATA)):
         data = DATA[frame_cnt]
         INTRINSICS = np.array([float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0]) # fx, fy, cx, cy
 
@@ -146,10 +146,13 @@ if __name__ == "__main__":
             reader = csv.reader(f)
             csv_data = np.array(list(reader), dtype=np.float32)
 
-        pred, csv_data = plane_ordering(points, pred, csv_data, R, EPSILON, SIGMA,keep_index=100)
+        pred, csv_data = plane_ordering(points, pred, csv_data, R, EPSILON, SIGMA,keep_index=gt.max())
 
-        valid_mask = depth.flatten() > 0
+        valid_mask = depth[45:471, 41:601].flatten() > 0
+        H,W = depth.shape
+        pred = pred.reshape(H,W)[45:471, 41:601].flatten()
         pred = pred[valid_mask]
+        gt = gt.reshape(H,W)[45:471, 41:601].flatten()
         gt = gt[valid_mask]
 
         pred = pred.reshape(-1, 1)
@@ -159,4 +162,18 @@ if __name__ == "__main__":
     
     avg = np.array(avg)
     print(avg.mean(0))
-        
+
+    #Get index of smallest in each column
+    min_idx = avg.argmin(axis=0)
+    max_idx = avg.argmax(axis=0)
+
+    print(min_idx)
+    print(max_idx)
+    
+    print(avg[min_idx[0]])
+    print(avg[max_idx[1]])
+    print(avg[min_idx[2]])
+
+    print("Smallest RI: ", min_idx[0])
+    print("Largest VOI: ", max_idx[1])
+    print("Smallest SC: ", min_idx[2])
