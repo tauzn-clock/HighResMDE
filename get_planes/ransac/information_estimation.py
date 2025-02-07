@@ -141,11 +141,12 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         normal = np.cross(AB,AC)
         normal = normal/(np.linalg.norm(normal,axis=1) + 1e-7)[:,None]
         distance = np.sum(- normal * A, axis=1)
+        del A,B,C
 
         direction_vector = DIRECTION_VECTOR[availability_mask]
 
-        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[availability_mask,None]) ** 2
-        error = error / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
+        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[availability_mask,None]) ** 2 / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
+        #error = error / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
         #error = error * availability_mask[:,None]
         error = np.clip(error,a_min=-np.inf,a_max=0)
         error_sum = np.sum(error,axis=0)
