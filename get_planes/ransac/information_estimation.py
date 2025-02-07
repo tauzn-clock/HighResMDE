@@ -78,7 +78,7 @@ def default_ransac(POINTS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=
     
     return information, mask, plane
 
-def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False, post_processing=False):
+def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_THRESHOLD=0.01, MAX_PLANE=1, valid_mask=None, verbose=False, post_processing=False, time_optimised=False):
     assert(MAX_PLANE > 0), "MAX_PLANE must be greater than 0"
     H, W = DEPTH.shape
     N = H * W
@@ -131,73 +131,72 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
             break
         
         if verbose: start = time.time()
-        idx = np.random.choice(available_index, (ITERATION, 3))
-        A = POINTS[idx[:,0]]
-        B = POINTS[idx[:,1]]
-        C = POINTS[idx[:,2]]
+        if time_optimised:
+            idx = np.random.choice(available_index, (ITERATION, 3))
+            A = POINTS[idx[:,0]]
+            B = POINTS[idx[:,1]]
+            C = POINTS[idx[:,2]]
 
-        AB = B-A
-        AC = C-A
-        normal = np.cross(AB,AC)
-        normal = normal/(np.linalg.norm(normal,axis=1) + 1e-7)[:,None]
-        distance = np.sum(- normal * A, axis=1)
-        del A,B,C
+            AB = B-A
+            AC = C-A
+            normal = np.cross(AB,AC)
+            normal = normal/(np.linalg.norm(normal,axis=1) + 1e-7)[:,None]
+            distance = np.sum(- normal * A, axis=1)
+            del A,B,C
 
-        direction_vector = DIRECTION_VECTOR[availability_mask]
+            direction_vector = DIRECTION_VECTOR[availability_mask]
 
-        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[availability_mask,None]) ** 2 / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
-        #error = error / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
-        #error = error * availability_mask[:,None]
-        error = np.clip(error,a_min=-np.inf,a_max=0)
-        error_sum = np.sum(error,axis=0)
-        best_index = np.argmin(error_sum)
+            error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2,None] - Z[availability_mask,None]) ** 2 / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
+            #error = error / TWO_SIGMA_SQUARE[availability_mask,None] + PER_POINT_INFO[availability_mask,None]
+            #error = error * availability_mask[:,None]
+            error = np.clip(error,a_min=-np.inf,a_max=0)
+            error_sum = np.sum(error,axis=0)
+            best_index = np.argmin(error_sum)
 
-        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
-        BEST_INLIERS_MASK[np.arange(0, N)[availability_mask][error[:,best_index] < 0]] = 1
-        BEST_ERROR = error_sum[best_index]
-        BEST_PLANE = np.concatenate((normal[best_index],distance[best_index,None]))
-        if verbose: print(time.time()-start)
+            BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
+            BEST_INLIERS_MASK[np.arange(0, N)[availability_mask][error[:,best_index] < 0]] = 1
+            BEST_ERROR = error_sum[best_index]
+            BEST_PLANE = np.concatenate((normal[best_index],distance[best_index,None]))
 
-        """
+        else:
+            BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
+            BEST_ERROR = 0
+            BEST_PLANE = np.zeros(4, dtype=float)
 
-        BEST_INLIERS_MASK = np.zeros(N, dtype=bool)
-        BEST_ERROR = 0
-        BEST_PLANE = np.zeros(4, dtype=float)
+            for _ in tqdm(range(ITERATION), disable=not verbose):
+                # Get 3 random points
+                idx = np.random.choice(available_index, 3, replace=False)
 
-        for _ in tqdm(range(ITERATION), disable=not verbose):
-            # Get 3 random points
-            idx = np.random.choice(available_index, 3, replace=False)
+                # Get the normal vector and distance
+                A = POINTS[idx[0]]
+                B = POINTS[idx[1]]
+                C = POINTS[idx[2]]
 
-            # Get the normal vector and distance
-            A = POINTS[idx[0]]
-            B = POINTS[idx[1]]
-            C = POINTS[idx[2]]
+                AB = B - A
+                AC = C - A
+                normal = np.cross(AB, AC)
+                normal = normal / (np.linalg.norm(normal) + 1e-7)
+                distance = -np.dot(normal, A)            
+                
+                # Count the number of inliers
+                error = ((-distance/(np.dot(DIRECTION_VECTOR, normal.T)+1e-7))*DIRECTION_VECTOR[:,2] - Z) ** 2
+                error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
+                trial_mask = error < 0
+                trial_mask = trial_mask & availability_mask
+                trial_error = error[trial_mask].sum()
 
-            AB = B - A
-            AC = C - A
-            normal = np.cross(AB, AC)
-            normal = normal / (np.linalg.norm(normal) + 1e-7)
-            distance = -np.dot(normal, A)            
+                if  trial_error < BEST_ERROR:
+                    
+                    #SVD to find normal and distance
+                    #inliers = POINTS[trial_mask]
+                    #normal, distance = fit_plane(inliers)
+                    #trial_mask, trial_error = find_inliers(normal, distance)
+                    
+                    BEST_INLIERS_MASK = trial_mask
+                    BEST_PLANE = np.concatenate((normal, [distance]))
+                    BEST_ERROR = trial_error
             
-            # Count the number of inliers
-            error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2] - Z) ** 2
-            error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
-            trial_mask = error < 0
-            trial_mask = trial_mask & availability_mask
-            trial_error = error[trial_mask].sum()
-
-            if  trial_error < BEST_ERROR:
-                
-                #SVD to find normal and distance
-                #inliers = POINTS[trial_mask]
-                #normal, distance = fit_plane(inliers)
-                #trial_mask, trial_error = find_inliers(normal, distance)
-                
-                BEST_INLIERS_MASK = trial_mask
-                BEST_PLANE = np.concatenate((normal, [distance]))
-                BEST_ERROR = trial_error
-        
-        """
+        if verbose: print(time.time()-start)
 
         information[plane_cnt] += BEST_ERROR
         mask[BEST_INLIERS_MASK] = plane_cnt
