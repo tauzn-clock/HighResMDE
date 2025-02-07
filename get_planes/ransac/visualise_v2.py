@@ -19,10 +19,15 @@ def save_img(pcd, filename):
     opt = vis.get_render_option()
     opt.point_size = 2
 
+    view_control = vis.get_view_control()
+    view_control.set_zoom(0.6) 
+    view_control.rotate(100.0, 100.0)
+
     image = vis.capture_screen_float_buffer(True)
 
-    plt.imsave(filename, np.asarray(image))
+    H, W, _ = np.asarray(image).shape
 
+    plt.imsave(filename, np.asarray(image)[:, int(W*0.1):int(W*0.9), :])
 
 def fuse_coord_with_color(coord, color, mask):
     coord = coord.reshape(-1, 3)
@@ -74,6 +79,12 @@ def find_distance_for_gt_planes(coord, csv, mask):
 
     return np.array(new_csv)
 
+def transform(pcd):
+    # Flip the point cloud
+    tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+    pcd.transform(tf)
+    return pcd
+
 if __name__ == '__main__':
     ROOT = "/scratchdata/nyu_plane"
     data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
@@ -83,7 +94,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 0
+    INDEX = 8
 
     data = DATA[INDEX]
 
@@ -103,29 +114,27 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         pred_csv = np.array(list(reader), dtype=np.float32)
     
-    tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-
     #Original RGB
-    plt.imsave(f"rgb_{INDEX}.png", rgb)
+    plt.imsave(f"rgb_{INDEX}.png", rgb[45:471, 41:601])
 
     #GT Mask overlay
     fig, ax = plt.subplots()
-    ax.imshow(rgb)
-    ax.imshow(gt_mask, alpha=0.5, cmap='hsv')
+    ax.imshow(rgb[45:471, 41:601])
+    ax.imshow(gt_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
     plt.savefig(f"gt_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
 
     #Pred Mask overlay
     fig, ax = plt.subplots()
-    ax.imshow(rgb)
-    ax.imshow(pred_mask, alpha=0.5, cmap='hsv')
+    ax.imshow(rgb[45:471, 41:601])
+    ax.imshow(pred_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
     plt.savefig(f"pred_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
     
     #Original PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd.transform(tf)
+    pcd = transform(pcd)
     save_img(pcd, f"pcd_ori_{INDEX}.png")
 
     #GT PCD
@@ -133,11 +142,11 @@ if __name__ == '__main__':
     full_gt_csv = find_distance_for_gt_planes(coord, gt_csv, gt_mask)
     coord = csv_to_depth(gt_mask, full_gt_csv, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd.transform(tf)
+    pcd = transform(pcd)
     save_img(pcd, f"pcd_gt_{INDEX}.png")
 
     #Pred PCD
     coord = csv_to_depth(pred_mask, pred_csv, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
-    pcd.transform(tf)
+    pcd = transform(pcd)
     save_img(pcd, f"pcd_pred_{INDEX}.png")
