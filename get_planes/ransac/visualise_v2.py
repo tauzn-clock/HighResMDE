@@ -23,11 +23,25 @@ def save_img(pcd, filename):
     view_control.set_zoom(0.6) 
     view_control.rotate(100.0, 100.0)
 
-    image = vis.capture_screen_float_buffer(True)
+    image = np.array(vis.capture_screen_float_buffer(True))
+    print(image[0,0])
 
-    H, W, _ = np.asarray(image).shape
+    left = image.shape[1]
+    right = 0
+    top = image.shape[0]
+    bottom = 0
 
-    plt.imsave(filename, np.asarray(image)[:, int(W*0.1):int(W*0.9), :])
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            if np.sum(image[i,j,:]) < 3:
+                left = min(left, j)
+                right = max(right, j)
+                top = min(top, i)
+                bottom = max(bottom, i)
+
+    print(left, right, top, bottom)
+
+    plt.imsave(filename, image[top:bottom, left:right])
 
 def fuse_coord_with_color(coord, color, mask):
     coord = coord.reshape(-1, 3)
@@ -94,7 +108,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 8
+    INDEX = 0
 
     data = DATA[INDEX]
 
