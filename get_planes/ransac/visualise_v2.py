@@ -62,15 +62,16 @@ def find_distance_for_gt_planes(coord, csv, mask):
     mask = mask.flatten()
 
     new_csv = []
-    new_csv.append([0, 0, 0, 0])
 
     for i in range(1,mask.max()+1):
         norm = csv[i-1,:3]
         norm = norm / np.linalg.norm(norm)
-        dist = coord[mask==i] @ norm
-        print(dist.mean())
+        valid_mask = np.zeros_like(mask)
+        valid_mask[mask==i] = 1
+        valid_mask[coord[:,2] == 0] = 0
+        dist = np.dot(coord[valid_mask==True], norm.T)
         new_csv.append([norm[0], norm[1], norm[2], -dist.mean()])
-    
+
     return np.array(new_csv)
 
 if __name__ == '__main__':
@@ -103,6 +104,23 @@ if __name__ == '__main__':
         pred_csv = np.array(list(reader), dtype=np.float32)
     
     tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+    #Original RGB
+    plt.imsave(f"rgb_{INDEX}.png", rgb)
+
+    #GT Mask overlay
+    fig, ax = plt.subplots()
+    ax.imshow(rgb)
+    ax.imshow(gt_mask, alpha=0.5, cmap='hsv')
+    ax.axis('off')
+    plt.savefig(f"gt_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
+
+    #Pred Mask overlay
+    fig, ax = plt.subplots()
+    ax.imshow(rgb)
+    ax.imshow(pred_mask, alpha=0.5, cmap='hsv')
+    ax.axis('off')
+    plt.savefig(f"pred_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
     
     #Original PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
@@ -112,7 +130,8 @@ if __name__ == '__main__':
 
     #GT PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
-    coord = csv_to_depth(gt_mask, find_distance_for_gt_planes(coord, gt_csv, gt_mask), INTRINSICS)
+    full_gt_csv = find_distance_for_gt_planes(coord, gt_csv, gt_mask)
+    coord = csv_to_depth(gt_mask, full_gt_csv, INTRINSICS)
     pcd = fuse_coord_with_color(coord, rgb, coord[:,2] > 0)
     pcd.transform(tf)
     save_img(pcd, f"pcd_gt_{INDEX}.png")
