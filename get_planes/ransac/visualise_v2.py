@@ -52,9 +52,9 @@ def shrink_pcd_img(ori,gt,pred,INDEX):
 
     print(left, right, top, bottom)
 
-    plt.imsave(f"paper_images/pcd_ori_{INDEX}.png", ori[top:bottom, left:right])
-    plt.imsave(f"paper_images/pcd_gt_{INDEX}.png", gt[top:bottom, left:right])
-    plt.imsave(f"paper_images/pcd_pred_{INDEX}.png", pred[top:bottom, left:right])
+    plt.imsave(f"paper_images/{INDEX}_pcd_ori.png", ori[top:bottom, left:right])
+    plt.imsave(f"paper_images/{INDEX}_pcd_gt.png", gt[top:bottom, left:right])
+    plt.imsave(f"paper_images/{INDEX}_pcd_pred.png", pred[top:bottom, left:right])
 
 def fuse_coord_with_color(coord, color, mask):
     coord = coord.reshape(-1, 3)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 1409
+    INDEX = 0
 
     data = DATA[INDEX]
 
@@ -142,21 +142,21 @@ if __name__ == '__main__':
         pred_csv = np.array(list(reader), dtype=np.float32)
     
     #Original RGB
-    plt.imsave(f"paper_images/rgb_{INDEX}.png", rgb[45:471, 41:601])
+    plt.imsave(f"paper_images/{INDEX}_rgb.png", rgb[45:471, 41:601])
 
     #GT Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
     ax.imshow(gt_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"paper_images/gt_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"paper_images/{INDEX}_gt_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
 
     #Pred Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
     ax.imshow(pred_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"paper_images/pred_mask_{INDEX}.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"paper_images/{INDEX}_pred_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
     
     #Original PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
