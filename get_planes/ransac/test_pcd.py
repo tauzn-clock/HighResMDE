@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_plane(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
+def get_plane_3d(R, EPSILON, param=[0, 0, 1, 0], noise = 3):
     # Parameters for the flat plane
     num_points = int(R//EPSILON)  # Number of points on the flat plane
     plane_size = R  # Size of the plane (e.g., 10x10 units)
