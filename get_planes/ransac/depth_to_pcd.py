@@ -22,6 +22,6 @@ def depth_to_pcd(depth_image, intrinsic):
     # Create a point cloud
     points = np.vstack((x_3d, y_3d, z)).T
     
-    index = np.column_stack((x, y))
+    index = np.column_stack((y,x))
 
     return points, index
