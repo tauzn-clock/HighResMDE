@@ -1,6 +1,4 @@
 import numpy as np
-from information_estimation import plane_ransac
-from visualise import visualise_mask
 from depth_to_pcd import depth_to_pcd
 import open3d as o3d
 
@@ -51,45 +49,3 @@ def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, M
         final_planes.append([a,b,c,d])
 
     return final_mask, np.array(final_planes)
-
-H = 480
-W = 640
-R = 10
-EPSILON = 0.001
-SIGMA = np.ones(H*W) * 0.002
-MAX_PLANE = 8
-CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.15
-
-INTRINSICS = np.array([500, 0, 320, 0, 0, 500, 240])
-N = 4
-depth = np.zeros((H,W))
-for i in range(N):
-    mask = np.zeros((H,W),dtype=bool)
-    mask[:,i*W//N:(i+1)*W//N] = True
-    depth += set_depth(np.ones((H,W)),INTRINSICS, mask, [0,0,1], 2 * i - 10)
-depth += np.random.randint(10, size=(H,W)) * EPSILON
-
-# Random assignment
-random_mask = np.random.randint(2, size=(H,W))
-depth[random_mask==0] = np.random.randint(R//EPSILON, size=(H,W))[random_mask==0] * EPSILON
-
-mask, planes = open3d_find_planes(depth, INTRINSICS, 0.02, CONFIDENCE, INLIER_THRESHOLD, 8, verbose=True)
-
-print(mask.max())
-print(planes)
-
-visualise_mask(depth, mask, INTRINSICS)
-
-information, mask, planes = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-
-print(information)
-print(planes)
-
-smallest = np.argmin(information)
-
-mask[mask>smallest] = 0
-print(mask.max())
-
-visualise_mask(depth, mask, INTRINSICS)
-
