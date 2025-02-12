@@ -24,6 +24,12 @@ depth += np.random.randint(10, size=(H,W)) * EPSILON
 random_mask = np.random.randint(2, size=(H,W))
 depth[random_mask==0] = np.random.randint(0.24*R//EPSILON, 0.30*R//EPSILON, size=(H,W))[random_mask==0] * EPSILON
 
+import matplotlib.pyplot as plt
+plt.imsave("ours.png",depth)
+
+mask = np.zeros((H,W),dtype=int)+1
+visualise_mask(depth, mask, INTRINSICS)
+
 mask, planes = open3d_find_planes(depth, INTRINSICS, 0.002, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 
 print(mask.max())
