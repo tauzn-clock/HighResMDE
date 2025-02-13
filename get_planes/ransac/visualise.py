@@ -41,9 +41,9 @@ def hsv_to_rgb(h, s, v):
 
     return r, g, b
 
-def visualise_mask(depth, mask, intrinsics, index=None, filepath=None):
+def visualise_mask(depth, mask, intrinsics, index=None, filepath=None,skip_color=False):
     points, _ = depth_to_pcd(depth, intrinsics) 
-    visualise_pcd(points, mask, index, filepath)
+    visualise_pcd(points, mask, index, filepath,skip_color)
 
 def save_mask(mask, filepath):
     H, W = mask.shape
@@ -53,7 +53,7 @@ def save_mask(mask, filepath):
     
     plt.imsave(filepath, color)
 
-def visualise_pcd(points, mask, index=None, filepath=None):
+def visualise_pcd(points, mask, index=None, filepath=None,skip_color=False):
     
     if index is not None: INDEX = index
     else: INDEX = mask.max()
@@ -64,9 +64,10 @@ def visualise_pcd(points, mask, index=None, filepath=None):
     color = np.zeros((points.shape[0], 3))
 
     mask = mask.flatten()
-    for i in range(1, INDEX+1):
-        color[mask==i] = hsv_to_rgb(i/INDEX*360, 1, 1)
-    point_cloud.colors = o3d.utility.Vector3dVector(color)
+    if not skip_color:
+        for i in range(1, INDEX+1):
+            color[mask==i] = hsv_to_rgb(i/INDEX*360, 1, 1)
+        point_cloud.colors = o3d.utility.Vector3dVector(color)
 
     tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     point_cloud.transform(tf)

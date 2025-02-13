@@ -30,13 +30,14 @@ DIRECTION_VECTOR = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 DIRECTION_VECTOR = DIRECTION_VECTOR.reshape(H,W,3)
 
 depth = np.zeros((H,W))
-
+gt = np.zeros((H,W))
 N = 4
 distance = [1.63,1,1,1.63]
 distance = np.array(distance) * -(0.5)**0.5
 for i in range(N):
     mask = np.zeros((H,W))
     mask[i*H//N:(i+1)*H//N,:] = 1
+    gt[mask==1] = i+1
 
     angle = -(-1)**i * np.pi/4
 
@@ -54,11 +55,12 @@ depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 print(depth.max(), depth.min())
 
 import matplotlib.pyplot as plt
-plt.imsave("staircase.png",depth)
+plt.imsave(f"{ROOT}/staircase.png",depth)
+visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/stair_gt.png",skip_color=True)
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd.png")
+save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_stair.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_stair.png")
 
 R = depth.max() - depth.min()
 print(R)
@@ -71,5 +73,5 @@ smallest = np.argmin(information)
 mask[mask>smallest] = 0
 print(mask.max())
 
-save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd.png")
+save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_stair.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_stair.png")

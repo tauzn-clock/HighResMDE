@@ -54,11 +54,12 @@ mask = np.zeros_like(depth,dtype=bool)
 #visualise_mask(depth, mask, INTRINSICS)
 
 import matplotlib.pyplot as plt
-plt.imsave("staircase.png",depth)
+plt.imsave(f"{ROOT}/corner.png",depth)
+visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/corner_gt.png",skip_color=True)
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd.png")
+save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_corner.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_corner.png")
 
 default_plane_ratio = []
 for i in range(8):
@@ -76,5 +77,5 @@ smallest = np.argmin(information)
 mask[mask>smallest] = 0
 print(mask.max())
 
-save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd.png")
+save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_corner.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_corner.png")
