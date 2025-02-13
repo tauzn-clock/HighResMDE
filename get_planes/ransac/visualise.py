@@ -68,6 +68,9 @@ def visualise_pcd(points, mask, index=None, filepath=None):
         color[mask==i] = hsv_to_rgb(i/INDEX*360, 1, 1)
     point_cloud.colors = o3d.utility.Vector3dVector(color)
 
+    tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+    point_cloud.transform(tf)
+
     if filepath is not None:
         # Visualizer
         vis = o3d.visualization.Visualizer()
@@ -81,7 +84,7 @@ def visualise_pcd(points, mask, index=None, filepath=None):
 
         view_control = vis.get_view_control()
         view_control.set_zoom(0.6) 
-        view_control.rotate(0, 0)
+        view_control.rotate(0, -100)
 
         img = np.array(vis.capture_screen_float_buffer(True))
         left = img.shape[1]

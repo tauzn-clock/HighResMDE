@@ -3,7 +3,7 @@ from information_estimation import plane_ransac
 from visualise import visualise_mask, save_mask
 from synthetic_test import set_depth, open3d_find_planes
 
-ROOT = "/HighResMDE/get_planes/staircase"
+ROOT = "/HighResMDE/get_planes/corner"
 NOISE_LEVEL = 5
 
 H = 480
@@ -13,7 +13,7 @@ EPSILON = 0.001
 SIGMA = np.ones(H*W) * EPSILON * NOISE_LEVEL
 MAX_PLANE = 8
 CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.25
+INLIER_THRESHOLD = 0.15
 INTRINSICS = np.array([500, 0, W//2, 0, 0, 500, H//2])
 
 Z = np.ones((H,W)).flatten()
@@ -31,27 +31,27 @@ DIRECTION_VECTOR = DIRECTION_VECTOR.reshape(H,W,3)
 
 depth = np.zeros((H,W))
 
-N = 4
-distance = [1.63,1,1,1.63]
-distance = np.array(distance) * -(0.5)**0.5
-for i in range(N):
-    mask = np.zeros((H,W))
-    mask[i*H//N:(i+1)*H//N,:] = 1
+N = 3
+distance = np.array([-1,-1,-1])
+for i in range(3):
+    mask = np.ones_like(depth,dtype=bool)
+    angle = (120*i) * np.pi/180
 
-    angle = -(-1)**i * np.pi/4
+    normal = np.array([np.cos(angle), np.sin(angle),1])
+    distance = -0.7
 
-    normal = np.array([0,np.sin(angle), np.cos(angle)])
-    #normal = [0,0,1]
+    new_depth = set_depth(np.ones((H,W)),INTRINSICS, mask, normal, distance)
+    depth = np.maximum(depth, new_depth)
 
-    depth += set_depth(np.ones((H,W)),INTRINSICS, mask, normal, distance[i])
-
+depth = np.clip(depth,0,1.4)
+print(depth.max(), depth.min())
 
 #Add noise
 depth += np.random.normal(0,NOISE_LEVEL * EPSILON,(H,W))
 
 depth = np.array(depth/EPSILON,dtype=int) * EPSILON
-
-print(depth.max(), depth.min())
+mask = np.zeros_like(depth,dtype=bool)
+#visualise_mask(depth, mask, INTRINSICS)
 
 import matplotlib.pyplot as plt
 plt.imsave("staircase.png",depth)
@@ -60,9 +60,14 @@ mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONF
 save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default.png")
 visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd.png")
 
+default_plane_ratio = []
+for i in range(8):
+    default_plane_ratio.append((mask==i).sum()/(mask.sum()))
+
+
 R = depth.max() - depth.min()
 print(R)
-information, mask, planes = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
+information, mask, planes = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=False)
 print(information)
 print(planes)
 
