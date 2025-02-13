@@ -101,9 +101,8 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
     DIRECTION_VECTOR = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 
     SPACE_STATES = np.log(R/EPSILON)
-    PER_POINT_INFO = np.log(SIGMA/(EPSILON+1e-7) + 1e-7)
-    PER_POINT_INFO += 0.5 * np.log(2*np.pi) - SPACE_STATES
-    TWO_SIGMA_SQUARE = 2 * (SIGMA**2 + 1e-7)
+    PER_POINT_INFO = np.log(SIGMA) - np.log(EPSILON) + 0.5 * np.log(2*np.pi) - SPACE_STATES
+    TWO_SIGMA_SQUARE = 2 * SIGMA**2
 
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
 
