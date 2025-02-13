@@ -1,15 +1,19 @@
 import numpy as np
 from information_estimation import plane_ransac
-from visualise import visualise_mask
+from visualise import visualise_mask, save_mask
 from synthetic_test import set_depth, open3d_find_planes
+
+ROOT = "/HighResMDE/get_planes/staircase"
+NOISE_LEVEL = 50
+
 H = 480
 W = 640
 R = 10
 EPSILON = 0.001
-SIGMA = np.ones(H*W) * 0.01
+SIGMA = np.ones(H*W) * EPSILON * NOISE_LEVEL
 MAX_PLANE = 8
 CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.15
+INLIER_THRESHOLD = 0.25
 INTRINSICS = np.array([500, 0, W//2, 0, 0, 500, H//2])
 
 Z = np.ones((H,W)).flatten()
@@ -43,16 +47,19 @@ for i in range(N):
 
 
 #Add noise
-depth += np.random.normal(0,0.01,(H,W))
+depth += np.random.normal(0,NOISE_LEVEL * EPSILON,(H,W))
 
 depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 
 import matplotlib.pyplot as plt
 plt.imsave("staircase.png",depth)
 
-mask, planes = open3d_find_planes(depth, INTRINSICS, 0.01, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-visualise_mask(depth, mask, INTRINSICS)
+mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
+save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd.png")
 
+R = depth.max() - depth.min()
+print(R)
 information, mask, planes = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 print(information)
 print(planes)
@@ -62,4 +69,5 @@ smallest = np.argmin(information)
 mask[mask>smallest] = 0
 print(mask.max())
 
-visualise_mask(depth, mask, INTRINSICS)
+save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours.png")
+visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd.png")

@@ -204,8 +204,8 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
 
         availability_mask[BEST_INLIERS_MASK] = 0
 
-        if information[plane_cnt] > information[plane_cnt-1]:
-            break
+        #if information[plane_cnt] > information[plane_cnt-1]:
+        #    break
     
     if post_processing:
         pts_normal = depth_to_normal(POINTS.reshape(H,W,3), 1, 0.2)

@@ -5,45 +5,55 @@ from PIL import Image
 import csv
 import os
 from metrics import plane_ordering
+from matplotlib import pyplot as plt
 
-def visualise_mask(depth, mask, intrinsics, index=None):
+def hsv_to_rgb(h, s, v):
+    """
+    Convert HSV to RGB.
+
+    :param h: Hue (0 to 360)
+    :param s: Saturation (0 to 1)
+    :param v: Value (0 to 1)
+    :return: A tuple (r, g, b) representing the RGB color.
+    """
+    h = h / 360  # Normalize hue to [0, 1]
+    c = v * s  # Chroma
+    x = c * (1 - abs((h * 6) % 2 - 1))  # Temporary value
+    m = v - c  # Match value
+
+    if 0 <= h < 1/6:
+        r, g, b = c, x, 0
+    elif 1/6 <= h < 2/6:
+        r, g, b = x, c, 0
+    elif 2/6 <= h < 3/6:
+        r, g, b = 0, c, x
+    elif 3/6 <= h < 4/6:
+        r, g, b = 0, x, c
+    elif 4/6 <= h < 5/6:
+        r, g, b = x, 0, c
+    else:
+        r, g, b = c, 0, x
+
+    # Adjust to match value
+    r = (r + m) 
+    g = (g + m) 
+    b = (b + m)
+
+    return r, g, b
+
+def visualise_mask(depth, mask, intrinsics, index=None, filepath=None):
     points, _ = depth_to_pcd(depth, intrinsics) 
-    visualise_pcd(points, mask, index)
+    visualise_pcd(points, mask, index, filepath)
 
-def visualise_pcd(points, mask, index=None):
-    def hsv_to_rgb(h, s, v):
-        """
-        Convert HSV to RGB.
+def save_mask(mask, filepath):
+    H, W = mask.shape
+    color = np.zeros((H, W, 3))
+    for i in range(1, mask.max()+1):
+        color[mask==i] = hsv_to_rgb(i/mask.max()*360, 1, 1)
+    
+    plt.imsave(filepath, color)
 
-        :param h: Hue (0 to 360)
-        :param s: Saturation (0 to 1)
-        :param v: Value (0 to 1)
-        :return: A tuple (r, g, b) representing the RGB color.
-        """
-        h = h / 360  # Normalize hue to [0, 1]
-        c = v * s  # Chroma
-        x = c * (1 - abs((h * 6) % 2 - 1))  # Temporary value
-        m = v - c  # Match value
-
-        if 0 <= h < 1/6:
-            r, g, b = c, x, 0
-        elif 1/6 <= h < 2/6:
-            r, g, b = x, c, 0
-        elif 2/6 <= h < 3/6:
-            r, g, b = 0, c, x
-        elif 3/6 <= h < 4/6:
-            r, g, b = 0, x, c
-        elif 4/6 <= h < 5/6:
-            r, g, b = x, 0, c
-        else:
-            r, g, b = c, 0, x
-
-        # Adjust to match value
-        r = (r + m) 
-        g = (g + m) 
-        b = (b + m)
-
-        return r, g, b
+def visualise_pcd(points, mask, index=None, filepath=None):
     
     if index is not None: INDEX = index
     else: INDEX = mask.max()
@@ -58,7 +68,40 @@ def visualise_pcd(points, mask, index=None):
         color[mask==i] = hsv_to_rgb(i/INDEX*360, 1, 1)
     point_cloud.colors = o3d.utility.Vector3dVector(color)
 
-    o3d.visualization.draw_geometries([point_cloud])
+    if filepath is not None:
+        # Visualizer
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+
+        # Add the point cloud to the visualizer
+        vis.add_geometry(point_cloud)
+
+        opt = vis.get_render_option()
+        opt.point_size = 2
+
+        view_control = vis.get_view_control()
+        view_control.set_zoom(0.6) 
+        view_control.rotate(0, 0)
+
+        img = np.array(vis.capture_screen_float_buffer(True))
+        left = img.shape[1]
+        right = 0
+        top = img.shape[0]
+        bottom = 0
+
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                if np.sum(img[i,j]) < 3:
+                    left = min(left, j)
+                    right = max(right, j)
+                    top = min(top, i)
+                    bottom = max(bottom, i)
+
+        output = img[top:bottom, left:right]
+        
+        plt.imsave(filepath, output)
+    else:
+        o3d.visualization.draw_geometries([point_cloud])
 
 if __name__ == '__main__':
     root = "/scratchdata/nyu_plane"
