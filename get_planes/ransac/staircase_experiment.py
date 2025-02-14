@@ -2,9 +2,11 @@ import numpy as np
 from information_estimation import plane_ransac
 from visualise import visualise_mask, save_mask
 from synthetic_test import set_depth, open3d_find_planes
+from metrics import plane_ordering
+from depth_to_pcd import depth_to_pcd
 
 ROOT = "/HighResMDE/get_planes/staircase"
-NOISE_LEVEL = 5
+NOISE_LEVEL = 10
 
 H = 480
 W = 640
@@ -48,7 +50,7 @@ for i in range(N):
 
 
 #Add noise
-depth += np.random.normal(0,NOISE_LEVEL * EPSILON,(H,W))
+depth += np.random.normal(0,5 * EPSILON,(H,W))
 
 depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 
@@ -72,6 +74,9 @@ smallest = np.argmin(information)
 
 mask[mask>smallest] = 0
 print(mask.max())
+
+points, index = depth_to_pcd(depth, INTRINSICS)
+mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index=mask.max())
 
 save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_stair.png")
 visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_stair.png")
