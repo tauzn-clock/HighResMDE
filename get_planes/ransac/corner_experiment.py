@@ -56,7 +56,7 @@ mask = np.zeros_like(depth,dtype=bool)
 #visualise_mask(depth, mask, INTRINSICS)
 
 import matplotlib.pyplot as plt
-plt.imsave(f"{ROOT}/corner.png",depth)
+plt.imsave(f"{ROOT}/corner.png",depth,cmap='gray')
 visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/corner_gt.png",skip_color=True)
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
@@ -75,8 +75,8 @@ print(information)
 print(planes)
 
 smallest = np.argmin(information)
-
 mask[mask>smallest] = 0
+planes = planes[1:smallest+1]
 print(mask.max())
 
 points, index = depth_to_pcd(depth, INTRINSICS)

@@ -57,7 +57,7 @@ depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 print(depth.max(), depth.min())
 
 import matplotlib.pyplot as plt
-plt.imsave(f"{ROOT}/staircase.png",depth)
+plt.imsave(f"{ROOT}/staircase.png",depth,cmap='gray')
 visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/stair_gt.png",skip_color=True)
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
@@ -71,8 +71,8 @@ print(information)
 print(planes)
 
 smallest = np.argmin(information)
-
 mask[mask>smallest] = 0
+planes = planes[1:smallest+1]
 print(mask.max())
 
 points, index = depth_to_pcd(depth, INTRINSICS)

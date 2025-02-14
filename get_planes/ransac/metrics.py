@@ -19,9 +19,8 @@ def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000):
     mask, param = remove_mask_with_zero_area(mask, param)
 
     SPACE_STATES = np.log(R/EPSILON)
-    PER_POINT_INFO = np.log(SIGMA/(EPSILON+1e-7) + 1e-7)
-    PER_POINT_INFO += 0.5 * np.log(2*np.pi) - SPACE_STATES
-    TWO_SIGMA_SQUARE = 2 * (SIGMA**2 + 1e-7)
+    PER_POINT_INFO = np.log(SIGMA) - np.log(EPSILON) + 0.5 * np.log(2*np.pi) - SPACE_STATES
+    TWO_SIGMA_SQUARE = 2 * SIGMA**2
 
     direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 

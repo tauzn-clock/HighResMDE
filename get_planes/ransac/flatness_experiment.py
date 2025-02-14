@@ -32,14 +32,15 @@ for i in range(N):
 
     if i!=0:
         random_mask = np.random.rand(H,W)
-        noise = np.random.normal(0,(1/noise_level[i])**0.5 * EPSILON*50,(H,W))
+        noise = np.random.normal(0,(1/noise_level[i])**0.5 * EPSILON*10,(H,W))
         noise_mask = (random_mask < noise_level[i]) & plane_mask
         depth[noise_mask] += noise[noise_mask]
 
+depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 print(depth.max(), depth.min())
 
 import matplotlib.pyplot as plt
-plt.imsave(f"{ROOT}/our.png",depth)
+plt.imsave(f"{ROOT}/our.png",depth,cmap='gray')
 visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/our_gt.png",skip_color=True)
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
@@ -53,12 +54,17 @@ print(information)
 print(planes)
 
 smallest = np.argmin(information)
-
 mask[mask>smallest] = 0
+planes = planes[1:smallest+1]
 print(mask.max())
 
 points, index = depth_to_pcd(depth, INTRINSICS)
-mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index=mask.max())
+mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA)
+#print(planes)
+#print(mask.reshape(H,W)[0,0])
+#print(mask.reshape(H,W)[0,160])
+#print(mask.reshape(H,W)[0,320])
+#print(mask.reshape(H,W)[0,480])
 
 save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_our.png")
 visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_our.png")
