@@ -66,7 +66,7 @@ def visualise_pcd(points, mask, index=None, filepath=None,skip_color=False):
     mask = mask.flatten()
     if not skip_color:
         for i in range(1, INDEX+1):
-            color[mask==i] = hsv_to_rgb(i/INDEX*360, 1, 1)
+            color[mask==i] = hsv_to_rgb((i-1)/INDEX*360, 1, 1)
         point_cloud.colors = o3d.utility.Vector3dVector(color)
 
     tf = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
