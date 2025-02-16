@@ -7,7 +7,7 @@ import open3d as o3d
 from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
 
-NOISE_LEVEL = 5
+NOISE_LEVEL = 10
 
 ROOT = "/HighResMDE/get_planes/flatness"
 H = 480
@@ -27,12 +27,12 @@ noise_level = [0,0.25,0.5,1]
 for i in range(N):
     plane_mask = np.zeros((H,W),dtype=bool)
     plane_mask[:,i*W//N:(i+1)*W//N] = True
-    depth += set_depth(np.ones((H,W)),INTRINSICS, plane_mask, [0,0,1], -0.3 * i - 2.5)
+    depth += set_depth(np.ones((H,W)),INTRINSICS, plane_mask, [0,0,1], -0.2 * i - 2.5)
     mask[plane_mask] = i+1
 
     if i!=0:
         random_mask = np.random.rand(H,W)
-        noise = np.random.normal(0,(1/noise_level[i])**0.5 * EPSILON*10,(H,W))
+        noise = np.random.normal(0,(1/noise_level[i])**0.5 * EPSILON*25,(H,W))
         noise_mask = (random_mask < noise_level[i]) & plane_mask
         depth[noise_mask] += noise[noise_mask]
 
@@ -60,6 +60,8 @@ print(mask.max())
 
 points, index = depth_to_pcd(depth, INTRINSICS)
 mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA)
+print(mask.max())   
+print(planes)
 #print(planes)
 #print(mask.reshape(H,W)[0,0])
 #print(mask.reshape(H,W)[0,160])
