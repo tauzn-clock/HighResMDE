@@ -60,6 +60,9 @@ for frame_cnt in range(len(DATA)):
 
     points, index = depth_to_pcd(depth, INTRINSICS)
     SIGMA = SIGMA_RATIO * points[:,2]
+    print(SIGMA.max(), SIGMA.min())
+    SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
+    print(SIGMA.max(), SIGMA.min())
 
     global_mask = np.zeros((H, W), dtype=int).flatten()
     global_planes = []
