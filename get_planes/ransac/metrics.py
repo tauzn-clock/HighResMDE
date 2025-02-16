@@ -19,7 +19,7 @@ def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000, mer
     mask, param = remove_mask_with_zero_area(mask, param)
 
     SPACE_STATES = np.log(R/EPSILON)
-    PER_POINT_INFO = np.log(SIGMA) - np.log(EPSILON) + 0.5 * np.log(2*np.pi) - SPACE_STATES
+    PER_POINT_INFO = np.log(SIGMA+1e-16) - np.log(EPSILON) + 0.5 * np.log(2*np.pi) - SPACE_STATES
     TWO_SIGMA_SQUARE = 2 * SIGMA**2
 
     direction_vector = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
             reader = csv.reader(f)
             csv_data = np.array(list(reader), dtype=np.float32)
 
-        pred, csv_data = plane_ordering(points, pred, csv_data, R, EPSILON, SIGMA,keep_index=gt.max())
+        pred, csv_data = plane_ordering(points, pred, csv_data, R, EPSILON, SIGMA,keep_index=gt.max(),merge_planes=True)
 
         valid_mask = depth[45:471, 41:601].flatten() > 0
         H,W = depth.shape
