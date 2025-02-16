@@ -117,7 +117,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 0
+    INDEX = 20
 
     data = DATA[INDEX]
 
@@ -132,12 +132,13 @@ if __name__ == '__main__':
 
     points, index = depth_to_pcd(depth, INTRINSICS)
     SIGMA = SIGMA_RATIO * points[:,2]
+    SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
 
     with open(os.path.join(root, FOLDER, f"{INDEX}.csv"), 'r') as f:
         reader = csv.reader(f)
         csv_data = np.array(list(reader), dtype=np.float32)
 
     mask = mask.flatten()
-    mask, csv_data = plane_ordering(points, mask, csv_data, R, EPSILON, SIGMA,keep_index=8)
+    mask, csv_data = plane_ordering(points, mask, csv_data, R, EPSILON, SIGMA,keep_index=8, merge_planes=True)
 
     visualise_mask(depth, mask, INTRINSICS)

@@ -6,7 +6,7 @@ import os
 import csv
 from depth_to_pcd import depth_to_pcd
 
-def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000):
+def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000, merge_planes=False):
     def remove_mask_with_zero_area(mask, param):
         new_mask = np.zeros_like(mask)
         new_param = []
@@ -47,9 +47,30 @@ def plane_ordering(POINTS, mask, param, R, EPSILON, SIGMA, keep_index=10000):
     index = np.argsort(store[:,1])
     #index = np.argsort(store[:,2])
 
-    for i in range(min(len(index),keep_index)):
+    for i in range(len(index)):
         new_mask[mask==index[i]+1] = i+1
         new_param[i] = param[index[i]]
+
+    if merge_planes:
+        for i in range(len(new_param)-1, -1, -1):
+            masked_direction_vector = direction_vector[mask==i+1]
+            masked_z = POINTS[mask==i+1][:,2]
+
+            for j in range(i):
+                norm = new_param[j,:3]
+                d = new_param[j,3]
+
+                error = ((-d/(np.dot(masked_direction_vector, norm.T)+1e-7))*masked_direction_vector[:,2] - masked_z) ** 2
+                error = error / TWO_SIGMA_SQUARE[mask==i+1] + PER_POINT_INFO[mask==i+1]
+
+                if error.sum() < 0:
+                    new_mask[mask==i+1] = j+1
+                    break
+
+        new_mask, new_param = plane_ordering(POINTS, new_mask, new_param, R, EPSILON, SIGMA, keep_index=keep_index, merge_planes=False)
+    
+    new_mask[new_mask > keep_index] = 0
+    new_param = new_param[:keep_index]
 
     return new_mask, new_param
 
