@@ -20,6 +20,7 @@ def pcd_to_img(pcd):
     opt.point_size = 2
 
     view_control = vis.get_view_control()
+    view_control.set_lookat([0, 0, 0])
     view_control.set_zoom(0.6) 
     view_control.rotate(100.0, 100.0)
 
@@ -115,8 +116,7 @@ def transform(pcd):
 if __name__ == '__main__':
     ROOT = "/scratchdata/nyu_plane"
     data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
-    FOLDER = "new_gt_sigma_1"
-
+    FOLDER = "new_gt_20240205"
     with open(data_csv, 'r') as f:
         reader = csv.reader(f)
         DATA = list(reader)
@@ -140,7 +140,14 @@ if __name__ == '__main__':
     with open(f"{ROOT}/{FOLDER}/{INDEX}.csv", 'r') as f:
         reader = csv.reader(f)
         pred_csv = np.array(list(reader), dtype=np.float32)
-    
+
+    points, index = depth_to_pcd(depth, INTRINSICS)
+    SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
+    print(pred_mask.max(),len(pred_csv))
+    pred_mask, pred_csv = plane_ordering(points, pred_mask.flatten(), pred_csv, R, EPSILON, SIGMA,keep_index=8, merge_planes=True)
+    pred_mask = pred_mask.reshape(depth.shape)
+    print(pred_mask.max(),len(pred_csv))
+
     #Original RGB
     plt.imsave(f"paper_images/{INDEX}_rgb.png", rgb[45:471, 41:601])
 
