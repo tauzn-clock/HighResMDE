@@ -49,7 +49,7 @@ def save_mask(mask, filepath):
     H, W = mask.shape
     color = np.zeros((H, W, 3))
     for i in range(1, mask.max()+1):
-        color[mask==i] = hsv_to_rgb(i/mask.max()*360, 1, 1)
+        color[mask==i] = hsv_to_rgb((i-1)/mask.max()*360, 1, 1)
     
     plt.imsave(filepath, color)
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 20
+    INDEX = 0
 
     data = DATA[INDEX]
 
