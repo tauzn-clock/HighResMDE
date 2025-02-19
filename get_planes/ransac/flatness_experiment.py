@@ -23,7 +23,7 @@ INTRINSICS = np.array([500, 0, 320, 0, 0, 500, 240])
 N = 4
 depth = np.zeros((H,W))
 mask = np.zeros((H,W),dtype=int)
-noise_level = [0,0.25,0.5,1]
+noise_level = [0,2,10,100]
 for i in range(N):
     plane_mask = np.zeros((H,W),dtype=bool)
     plane_mask[:,i*W//N:(i+1)*W//N] = True
@@ -31,10 +31,14 @@ for i in range(N):
     mask[plane_mask] = i+1
 
     if i!=0:
-        random_mask = np.random.rand(H,W)
-        noise = np.random.normal(0,(1/noise_level[i])**0.5 * EPSILON*25,(H,W))
-        noise_mask = (random_mask < noise_level[i]) & plane_mask
-        depth[noise_mask] += noise[noise_mask]
+        amplitude = NOISE_LEVEL * EPSILON
+        x = np.linspace(0,1,H)
+        y = np.sin(2*np.pi*x*noise_level[i]) * amplitude
+        noise = np.tile(y,(W,1)).T
+        print(noise.shape)
+        #noise = np.random.normal(0,EPSILON*25,(H,W))
+        #noise_mask = (random_mask < noise_level[i]) & plane_mask
+        depth[plane_mask] += noise[plane_mask]
 
 depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 print(depth.max(), depth.min())
