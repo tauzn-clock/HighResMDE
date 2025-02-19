@@ -6,7 +6,7 @@ from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
 
 ROOT = "/HighResMDE/get_planes/corner"
-NOISE_LEVEL = 10
+NOISE_LEVEL = 2
 
 H = 480
 W = 640
@@ -15,7 +15,7 @@ EPSILON = 0.001
 SIGMA = np.ones(H*W) * EPSILON * NOISE_LEVEL
 MAX_PLANE = 8
 CONFIDENCE = 0.99
-INLIER_THRESHOLD = 0.15
+INLIER_THRESHOLD = 0.25
 INTRINSICS = np.array([500, 0, W//2, 0, 0, 500, H//2])
 
 Z = np.ones((H,W)).flatten()
@@ -45,7 +45,7 @@ for i in range(3):
     new_depth = set_depth(np.ones((H,W)),INTRINSICS, mask, normal, distance)
     depth = np.maximum(depth, new_depth)
 
-depth = np.clip(depth,0,1.4)
+depth = np.clip(depth,0,1.5)
 print(depth.max(), depth.min())
 
 #Add noise
