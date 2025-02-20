@@ -187,9 +187,13 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
                 if  trial_error < BEST_ERROR:
                     
                     #SVD to find normal and distance
-                    #inliers = POINTS[trial_mask]
-                    #normal, distance = fit_plane(inliers)
-                    #trial_mask, trial_error = find_inliers(normal, distance)
+                    inliers = POINTS[trial_mask]
+                    normal, distance = fit_plane(inliers)
+                    error = ((-distance/(np.dot(DIRECTION_VECTOR, normal.T)+1e-7))*DIRECTION_VECTOR[:,2] - Z) ** 2
+                    error = error / TWO_SIGMA_SQUARE + PER_POINT_INFO
+                    trial_mask = error < 0
+                    trial_mask = trial_mask & availability_mask
+                    trial_error = error[trial_mask].sum()
                     
                     BEST_INLIERS_MASK = trial_mask
                     BEST_PLANE = np.concatenate((normal, [distance]))
