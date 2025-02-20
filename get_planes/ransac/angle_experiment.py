@@ -7,8 +7,8 @@ from depth_to_pcd import depth_to_pcd
 np.random.seed(0)
 
 ROOT = "/HighResMDE/get_planes/angle"
-NOISE_LEVEL = 50
-ANGLE = 120
+NOISE_LEVEL = 10
+ANGLE = 170
 
 H = 480
 W = 640
@@ -46,8 +46,8 @@ for i in range(N):
     depth += set_depth(np.ones((H,W)),INTRINSICS, mask, normal[i], distance[i])
 
 #Add noise
-#depth += np.random.normal(0, NOISE_LEVEL * EPSILON,(H,W))
-#depth = np.array(depth/EPSILON,dtype=int) * EPSILON
+depth += np.random.normal(0, NOISE_LEVEL * EPSILON,(H,W))
+depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 
 print(depth.max(), depth.min())
 #visualise_mask(depth, np.zeros_like(depth,dtype=np.int8), INTRINSICS)
@@ -63,7 +63,6 @@ mask, open3d_planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVE
 
 R = depth.max() - depth.min()
 print(R)
-R = 10
 information, mask, planes = plane_ransac(depth, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 print(information)
 print(planes)
@@ -85,9 +84,9 @@ for i in range(len(open3d_planes)):
     dist_error = np.inf
     for j in range(N):
         normal_error = np.arccos(np.abs(np.dot(normal[j], open3d_planes[i,:3])))*180/np.pi
-        angle_error = min(angle_error, normal_error)
-
-        dist_error = min(dist_error, np.abs(open3d_planes[i,3] - distance[j]))
+        if normal_error < angle_error:
+            angle_error = normal_error
+            dist_error = np.abs(open3d_planes[i,3] - distance[j])
 
     print(f"Plane {i+1}: Angle Error: {angle_error}, Distance Error: {dist_error}")
 
@@ -100,9 +99,9 @@ for i in range(len(planes)):
     dist_error = np.inf
     for j in range(N):
         normal_error = np.arccos(np.abs(np.dot(normal[j], planes[i,:3])))*180/np.pi
-        angle_error = min(angle_error, normal_error)
-
-        dist_error = min(dist_error, np.abs(planes[i,3] - distance[j]))
+        if normal_error < angle_error:
+            angle_error = normal_error
+            dist_error = np.abs(planes[i,3] - distance[j])
 
     print(f"Plane {i+1}: Angle Error: {angle_error}, Distance Error: {dist_error}")
 
