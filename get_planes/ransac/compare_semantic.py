@@ -5,7 +5,28 @@ import matplotlib.pyplot as plt
 import csv
 from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
+from scipy.ndimage import label
 from PIL import Image
+import tqdm
+
+def largest_connected_region(mask):
+    # Label the connected components in the mask
+    labeled_mask, num_features = label(mask)
+    
+    # If no regions are found, return None or an empty mask
+    if num_features == 0:
+        return None
+    
+    # Calculate the size of each region
+    region_sizes = [np.sum(labeled_mask == i) for i in range(1, num_features + 1)]
+    
+    # Find the index of the largest region
+    largest_region_idx = np.argmax(region_sizes) + 1
+    
+    # Create a mask for the largest region
+    largest_region_mask = (labeled_mask == largest_region_idx)
+    
+    return largest_region_mask
 
 def get_metric(gt, pred):
     precision = (pred & gt).sum() / pred.sum()
@@ -22,7 +43,8 @@ flat_labels["door"] = 8
 flat_labels["window"] = 9
 
 ROOT="/scratchdata/nyu_plane"
-FOLDER="new_gt_noise_model"
+#FOLDER="new_gt_noise_model"
+FOLDER="new_gt_sigma_1"
 data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
 with open(data_csv, 'r') as f:
     reader = csv.reader(f)
@@ -30,7 +52,7 @@ with open(data_csv, 'r') as f:
 
 metric = []
 
-for INDEX in range(1449):
+for INDEX in tqdm.tqdm(range(1449)):
     data = DATA[INDEX]
     EPSILON = 1/float(data[6]) # Resolution
     R = float(data[7]) # Maximum Range
@@ -48,7 +70,7 @@ for INDEX in range(1449):
 
     points, index = depth_to_pcd(depth, INTRINSICS)
     SIGMA = 0.01 * points[:,2]
-    SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
+    #SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
     pred, pred_csv = plane_ordering(points, pred.flatten(), pred_csv, R, EPSILON, SIGMA, merge_planes=True)
     pred = pred.reshape(depth.shape)
 
@@ -60,58 +82,49 @@ for INDEX in range(1449):
         gt_mask = gt == flat_labels[key]
 
         if gt_mask.sum() == 0: 
-            each_metrics.append([0, 0, 0, 0])
+            each_metrics.append([0, 0, 0])
             continue
-
-        best_iou = 0
-        best_iou_index = -1
-
-        for i in range(1, pred.max()+1):
-            pred_mask = pred == i
-
-            # Calculate IoU
-            intersection = np.logical_and(gt_mask, pred_mask)
-            union = np.logical_or(gt_mask, pred_mask)
-
-            iou = intersection.sum() / union.sum()
-            
-            if iou > best_iou:
-                best_iou = iou
-                best_iou_index = i
-
-        if best_iou_index == -1: 
-            each_metrics.append([0, 0, 0, 0])
-        else:
-            each_metrics.append([best_iou] + get_metric(gt_mask, pred == best_iou_index))
         
+        gt_mask = largest_connected_region(gt_mask)
+
+        pred_mask = pred[gt_mask]
+        unique_elements, counts = np.unique(pred_mask, return_counts=True)
+        if unique_elements[0] == 0:
+            unique_elements = unique_elements[1:]
+            counts = counts[1:]
+        #print(unique_elements, counts)
+
+        if len(unique_elements) == 0:
+            each_metrics.append([0, 1, 0])
+            continue
+        
+        each_metrics.append([counts.sum(), counts.max(), counts.max()/counts.sum()])
+
+        """
+        fig, ax = plt.subplots()
+        ax.imshow(pred)
+        ax.imshow(gt_mask, alpha=0.5, cmap='binary')
+        ax.axis('off')
+        plt.savefig(f"{key}_pred_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
+        """
+            
     each_metrics = np.array(each_metrics)
     metric.append(each_metrics)
 
 metric = np.array(metric)
 print(metric.shape)
 
+np.save("sigma_1.npy", metric)
+
 print(np.mean(metric, axis=0))
 
-"""
-Original GT:
-[[0.49364788 0.79220085 0.56875876 0.62509793]
- [0.06407709 0.08531529 0.06755748 0.07279495]
- [0.62487065 0.70743184 0.66357643 0.67273705]
- [0.1238822  0.16984607 0.15566408 0.14933553]
- [0.10548322 0.17097035 0.13682334 0.13522535]]
-"""
+# Find percentage of images
+print((metric[:,:,1]>0).sum(axis=0)/metric.shape[0])
 
-"""
-Proportional Noise:
-[[0.48744679 0.6825865  0.64955511 0.62598243]
- [0.0630987  0.08932275 0.0859664  0.07679088]
- [0.56796911 0.65939146 0.67573827 0.64307086]
- [0.10498988 0.14727822 0.17113001 0.13481629]
- [0.05238704 0.12023923 0.09437795 0.07577731]]
-Specific noise model:
-[[0.49123787 0.72438183 0.61991709 0.63132005]
- [0.06303651 0.08938695 0.08253578 0.0774748 ]
- [0.57124625 0.69272072 0.65317563 0.65177171]
- [0.10990859 0.15927535 0.1617148  0.14005832]
- [0.0580108  0.14264616 0.08385726 0.08200619]]
-"""
+# Find mean within the images that have at least one plane
+print(flat_labels.keys())
+for i in range(len(flat_labels)):    
+    tmp = metric[metric[:,i,1]>0]
+    tmp = tmp[:,i]
+    print(tmp[:,2].mean())
+#    print(np.mean(tmp, axis=0))
