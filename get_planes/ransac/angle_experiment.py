@@ -7,8 +7,8 @@ from depth_to_pcd import depth_to_pcd
 np.random.seed(0)
 
 ROOT = "/HighResMDE/get_planes/angle"
-NOISE_LEVEL = 10
-ANGLE = 170
+NOISE_LEVEL = 2
+ANGLE = 150
 
 H = 480
 W = 640
@@ -46,7 +46,7 @@ for i in range(N):
     depth += set_depth(np.ones((H,W)),INTRINSICS, mask, normal[i], distance[i])
 
 #Add noise
-depth += np.random.normal(0, NOISE_LEVEL * EPSILON,(H,W))
+depth += np.random.normal(0, 5 * EPSILON,(H,W))
 depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 
 print(depth.max(), depth.min())
@@ -75,7 +75,11 @@ print(mask.max())
 points, index = depth_to_pcd(depth, INTRINSICS)
 mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index=mask.max())
 
+store = []
+
 print("Open3D error")
+sum_angle_error = 0
+sum_dist_error = 0
 for i in range(len(open3d_planes)):
     if open3d_planes[i,2] < 0:
         open3d_planes[i] = -open3d_planes[i]
@@ -89,8 +93,16 @@ for i in range(len(open3d_planes)):
             dist_error = np.abs(open3d_planes[i,3] - distance[j])
 
     print(f"Plane {i+1}: Angle Error: {angle_error}, Distance Error: {dist_error}")
+    sum_angle_error += angle_error
+    sum_dist_error += dist_error
+
+print(f"Average Angle Error: {sum_angle_error/len(open3d_planes)}, Average Distance Error: {sum_dist_error/len(open3d_planes)}")
+store.append(sum_angle_error/len(open3d_planes))
+store.append(sum_dist_error/len(open3d_planes))
 
 print("Our error")
+sum_angle_error = 0
+sum_dist_error = 0
 for i in range(len(planes)):
     if planes[i,2] < 0:
         planes[i] = -planes[i]
@@ -104,6 +116,24 @@ for i in range(len(planes)):
             dist_error = np.abs(planes[i,3] - distance[j])
 
     print(f"Plane {i+1}: Angle Error: {angle_error}, Distance Error: {dist_error}")
+    sum_angle_error += angle_error
+    sum_dist_error += dist_error
+
+print(f"Average Angle Error: {sum_angle_error/len(planes)}, Average Distance Error: {sum_dist_error/len(planes)}")
+store.append(sum_angle_error/len(planes))
+store.append(sum_dist_error/len(planes))
+
+if True:
+    import csv
+
+    with open("2.csv", mode='r') as file:
+        data = list(csv.reader(file))
+    
+    data.append(store)
+
+    with open("2.csv", mode='w') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
 
 #save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_stair.png")
 #visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_stair.png")
