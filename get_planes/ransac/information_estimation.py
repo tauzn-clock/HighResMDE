@@ -217,7 +217,7 @@ def plane_ransac(DEPTH, INTRINSICS, R, EPSILON, SIGMA, CONFIDENCE=0.99, INLIER_T
         distance = plane[1:,3]
         normal = plane[1:,:3]
 
-        error = ((-distance/(np.dot(direction_vector, normal.T)+1e-7))*direction_vector[:,2, None] - Z[:,None]) ** 2
+        error = ((-distance/(np.dot(DIRECTION_VECTOR, normal.T)+1e-7))*DIRECTION_VECTOR[:,2, None] - Z[:,None]) ** 2
         error = error / TWO_SIGMA_SQUARE[:,None] + PER_POINT_INFO[:,None]
 
         new_mask = np.argmin(error, axis=1) + 1
