@@ -7,6 +7,7 @@ import os
 from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
 import matplotlib.pyplot as plt
+from visualise import hsv_to_rgb
 
 def pcd_to_img(pcd):
     # Visualizer
@@ -53,9 +54,9 @@ def shrink_pcd_img(ori,gt,pred,INDEX):
 
     print(left, right, top, bottom)
 
-    plt.imsave(f"paper_images/{INDEX}_pcd_ori.png", ori[top:bottom, left:right])
-    plt.imsave(f"paper_images/{INDEX}_pcd_gt.png", gt[top:bottom, left:right])
-    plt.imsave(f"paper_images/{INDEX}_pcd_pred.png", pred[top:bottom, left:right])
+    plt.imsave(f"{SAVE_PATH}/{INDEX}_pcd_ori.png", ori[top:bottom, left:right])
+    plt.imsave(f"{SAVE_PATH}/{INDEX}_pcd_gt.png", gt[top:bottom, left:right])
+    plt.imsave(f"{SAVE_PATH}/{INDEX}_pcd_pred.png", pred[top:bottom, left:right])
 
 def fuse_coord_with_color(coord, color, mask):
     coord = coord.reshape(-1, 3)
@@ -113,15 +114,22 @@ def transform(pcd):
     pcd.transform(tf)
     return pcd
 
+def get_mask_img(mask):
+    color = np.zeros((mask.shape[0], mask.shape[1], 3))
+    for i in range(1, mask.max()+1):
+        color[mask==i] = hsv_to_rgb((i-1)/mask.max()*360, 1, 1)
+    return color
+
 if __name__ == '__main__':
+    SAVE_PATH = "/HighResMDE/get_planes/visualisation"
     ROOT = "/scratchdata/nyu_plane"
     data_csv = "/HighResMDE/get_planes/ransac/config/nyu.csv"
-    FOLDER = "new_gt_20240205"
+    FOLDER = "new_gt_sigma_1"
     with open(data_csv, 'r') as f:
         reader = csv.reader(f)
         DATA = list(reader)
 
-    INDEX = 0
+    INDEX = 32
 
     data = DATA[INDEX]
 
@@ -142,28 +150,29 @@ if __name__ == '__main__':
         pred_csv = np.array(list(reader), dtype=np.float32)
 
     points, index = depth_to_pcd(depth, INTRINSICS)
-    SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
+    SIGMA = 0.01 * points[:,2]
+    #SIGMA = 0.0012 + 0.0019 * (points[:,2] - 0.4)**2
     print(pred_mask.max(),len(pred_csv))
-    pred_mask, pred_csv = plane_ordering(points, pred_mask.flatten(), pred_csv, R, EPSILON, SIGMA,keep_index=8, merge_planes=True)
+    pred_mask, pred_csv = plane_ordering(points, pred_mask.flatten(), pred_csv, R, EPSILON, SIGMA,keep_index=16, merge_planes=True)
     pred_mask = pred_mask.reshape(depth.shape)
     print(pred_mask.max(),len(pred_csv))
 
     #Original RGB
-    plt.imsave(f"paper_images/{INDEX}_rgb.png", rgb[45:471, 41:601])
+    plt.imsave(f"{SAVE_PATH}/{INDEX}_rgb.png", rgb[45:471, 41:601])
 
     #GT Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
-    ax.imshow(gt_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
+    ax.imshow(get_mask_img(gt_mask)[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"paper_images/{INDEX}_gt_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"{SAVE_PATH}/{INDEX}_gt_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
 
     #Pred Mask overlay
     fig, ax = plt.subplots()
     ax.imshow(rgb[45:471, 41:601])
-    ax.imshow(pred_mask[45:471, 41:601], alpha=0.5, cmap='hsv')
+    ax.imshow(get_mask_img(pred_mask)[45:471, 41:601], alpha=0.5, cmap='hsv')
     ax.axis('off')
-    plt.savefig(f"paper_images/{INDEX}_pred_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.savefig(f"{SAVE_PATH}/{INDEX}_pred_mask.png", bbox_inches='tight', pad_inches=0, transparent=True)
     
     #Original PCD
     coord, _ = depth_to_pcd(depth, INTRINSICS)
