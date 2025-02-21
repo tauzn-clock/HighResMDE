@@ -24,9 +24,9 @@ SIGMA_RATIO = 0.01
 
 CONFIDENCE = 0.99
 INLIER_THRESHOLD = 0.1
-MAX_PLANE = 8
+MAX_PLANE = 16
 
-USE_SAM = True
+USE_SAM = False
 
 SAM_CONFIDENCE = 0.99
 SAM_INLIER_THRESHOLD = 0.2
@@ -42,7 +42,7 @@ with open(data_csv, 'r') as f:
     reader = csv.reader(f)
     DATA = list(reader)
 
-for frame_cnt in range(len(DATA)):
+for frame_cnt in range(1000,len(DATA)):
     data = DATA[frame_cnt]
 
     INTRINSICS = [float(data[2]), 0, float(data[4]), 0, 0, float(data[3]), float(data[5]), 0] # fx, fy, cx, cy
