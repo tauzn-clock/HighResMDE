@@ -35,6 +35,7 @@ depth = np.zeros((H,W))
 
 N = 3
 distance = np.array([-1,-1,-1])
+gt = np.zeros((H,W),dtype=int)
 for i in range(3):
     mask = np.ones_like(depth,dtype=bool)
     angle = (120*i) * np.pi/180
@@ -43,8 +44,10 @@ for i in range(3):
     distance = -0.7
 
     new_depth = set_depth(np.ones((H,W)),INTRINSICS, mask, normal, distance)
+    gt[new_depth>depth] = i+1
     depth = np.maximum(depth, new_depth)
 
+gt[depth>1.5] = 4
 depth = np.clip(depth,0,1.5)
 print(depth.max(), depth.min())
 
@@ -58,6 +61,7 @@ mask = np.zeros_like(depth,dtype=bool)
 import matplotlib.pyplot as plt
 plt.imsave(f"{ROOT}/corner.png",depth,cmap='gray')
 visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/corner_gt.png",skip_color=True)
+visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/corner_3.png")
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_corner.png")

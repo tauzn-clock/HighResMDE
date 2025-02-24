@@ -32,7 +32,7 @@ DIRECTION_VECTOR = POINTS / (np.linalg.norm(POINTS, axis=1)[:, None]+1e-7)
 DIRECTION_VECTOR = DIRECTION_VECTOR.reshape(H,W,3)
 
 depth = np.zeros((H,W))
-gt = np.zeros((H,W))
+gt = np.zeros((H,W),dtype=int)
 N = 4
 distance = [1.63,1,1,1.63]
 distance = np.array(distance) * -(0.5)**0.5
@@ -59,6 +59,7 @@ print(depth.max(), depth.min())
 import matplotlib.pyplot as plt
 plt.imsave(f"{ROOT}/staircase.png",depth,cmap='gray')
 visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/stair_gt.png",skip_color=True)
+visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/stair_4.png")
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_stair.png")
