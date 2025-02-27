@@ -31,6 +31,8 @@ def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, M
 
     points, index = depth_to_pcd(depth, INTRINSICS)
 
+    #final_mask[depth == 0] = -1
+
     pcd = o3d.geometry.PointCloud()
     
     ITERATION = int(np.log(1 - CONFIDENCE) / np.log(1 - INLIER_THRESHOLD**3))
@@ -47,5 +49,7 @@ def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, M
         final_mask[plane_index[:,0],plane_index[:,1]] = i+1
         
         final_planes.append([a,b,c,d])
+
+    #final_mask[final_mask == -1] = 0
 
     return final_mask, np.array(final_planes)
