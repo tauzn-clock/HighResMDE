@@ -65,8 +65,10 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
     int W = depth.cols;
 
     vector<float> sigma(H*W);
+    vector<float> log_sigma(H*W);
 
     vector<array<float,3> > points(H*W);
+    vector<array<float,3> > direction_vector(H*W);
     vector<int> mask(H*W, 0);
     int total_points = 0;
 
@@ -76,8 +78,14 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             points[i*W + j][1] = (i - cy) * depth.at<unsigned short>(i, j) / fy / scale;
             points[i*W + j][2] = depth.at<unsigned short>(i, j) / scale;
 
+            float norm = sqrt(points[i*W + j][0] * points[i*W + j][0] + points[i*W + j][1] * points[i*W + j][1] + points[i*W + j][2] * points[i*W + j][2]) + 1e-10;
+            direction_vector[i*W + j][0] = points[i*W + j][0] / norm;
+            direction_vector[i*W + j][1] = points[i*W + j][1] / norm;
+            direction_vector[i*W + j][2] = points[i*W + j][2] / norm;
+
             //Sigma function
             sigma[i*W + j] = 0.01 * depth.at<unsigned short>(i, j) / scale;
+            log_sigma[i*W + j] = log(sigma[i*W + j]) - log(eps) + 0.5 * log(2 * 3.14159) - STATES;
 
             if (depth.at<unsigned short>(i, j) == 0) {
                 mask[i*W + j] = -1;
@@ -99,10 +107,12 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
     vector<float> trial_error(H*W, 0);
     float trial_total_error = 0;
 
-    vector<float> best_error;
+    vector<float> best_error(H*W, 0);
     float best_total_error;
 
     for (int plane_cnt = 1; plane_cnt < max_plane; plane_cnt++) {
+        auto start = chrono::high_resolution_clock::now();
+        
         int available_points_cnt = 0;
         for (int i = 0; i < total_points; i++) {
             if (mask[i] == 0) {
@@ -110,6 +120,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
                 available_points_cnt++;
             }
         }
+        available_points.resize(available_points_cnt);
         
         information[plane_cnt] = information[plane_cnt-1] + total_points * log((plane_cnt+1)/plane_cnt) + 3 * STATES;
 
@@ -119,7 +130,6 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
         std::mt19937 gen(rd()); // Initialize a Mersenne Twister engine
         std::uniform_int_distribution<> distrib(1, available_points_cnt); // Range from 1 to 100
 
-        auto start = chrono::high_resolution_clock::now();
         for (int trial=0; trial<ITERATION; trial++){
 
             trial_total_error = 0;
@@ -134,11 +144,10 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
             trial_plane = get_plane(points[available_points[index_a]], points[available_points[index_b]], points[available_points[index_c]]);
 
-            for(int i=0; i<available_points_cnt;i++){
-                int j = available_points[i];
-                trial_error[j] = - trial_plane[3] / (trial_plane[0] * points[j][0] + trial_plane[1] * points[j][1] + trial_plane[2] * points[j][2] + 1e-10);
+            for(const int& j : available_points) {
+                trial_error[j] = - trial_plane[3] / (trial_plane[0] * points[j][0] + trial_plane[1] * points[j][1] + trial_plane[2] * points[j][2] + 1e-10)*direction_vector[j][2];
                 trial_error[j] = (trial_error[j] - points[j][2]) / sigma[j];
-                trial_error[j] = pow(trial_error[j], 2)/2 + log(sigma[j]) - log(eps) + 0.5 * log(2 * 3.14159) - STATES;
+                trial_error[j] = pow(trial_error[j], 2)/2 + log_sigma[j];
 
                 if (trial_error[j] < 0) {
                     trial_total_error += trial_error[j];
@@ -146,7 +155,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             }
 
             if (trial_total_error < best_total_error) {
-                best_error = trial_error;
+                swap(best_error, trial_error);
                 best_total_error = trial_total_error;
                 plane[plane_cnt] = trial_plane;
             }
