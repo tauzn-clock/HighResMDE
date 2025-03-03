@@ -4,6 +4,8 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
+#include <chrono>
+#include <random>
 #include "information_optimisation.h"
 
 using namespace std;
@@ -31,10 +33,17 @@ array<float,4> get_plane(array<float,3> a, array<float,3> b, array<float,3> c) {
     plane[1] /= norm;
     plane[2] /= norm;
 
+    if (plane[2] < 0) {
+        plane[0] = -plane[0];
+        plane[1] = -plane[1];
+        plane[2] = -plane[2];
+        plane[3] = -plane[3];
+    }
+
     return plane;
 }
 
-vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, int max_pt) {
+vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, int max_plane) {
 
     float fx = config["camera_params"]["fx"].as<float>();
     float fy = config["camera_params"]["fy"].as<float>();
@@ -44,6 +53,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
     float R = config["R"].as<float>();
     float eps = config["eps"].as<float>();
+    float STATES = log(R/eps);
 
     float conf = config["conf"].as<float>();
     float inlier_th = config["inlier_th"].as<float>();
@@ -54,6 +64,8 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
     int H = depth.rows;
     int W = depth.cols;
 
+    vector<float> sigma(H*W);
+
     vector<array<float,3> > points(H*W);
     vector<int> mask(H*W, 0);
     int total_points = 0;
@@ -63,6 +75,10 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             points[i*W + j][0] = (j - cx) * depth.at<unsigned short>(i, j) / fx / scale;
             points[i*W + j][1] = (i - cy) * depth.at<unsigned short>(i, j) / fy / scale;
             points[i*W + j][2] = depth.at<unsigned short>(i, j) / scale;
+
+            //Sigma function
+            sigma[i*W + j] = 0.01 * depth.at<unsigned short>(i, j) / scale;
+
             if (depth.at<unsigned short>(i, j) == 0) {
                 mask[i*W + j] = -1;
             }
@@ -72,16 +88,21 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
         }
     }
 
-    vector<float> information(max_pt, 0);
-    vector<array<float,4> > plane(max_pt);
+    vector<float> information(max_plane, 0);
+    vector<array<float,4> > plane(max_plane);
     vector<int> available_points(total_points, 0);
     int available_points_cnt = 0;
 
-    information[0] = total_points * log(R/eps);
+    information[0] = total_points * STATES;
 
     array<float,4> trial_plane;
+    vector<float> trial_error(H*W, 0);
+    float trial_total_error = 0;
 
-    for (int plane_cnt = 1; plane_cnt < max_pt; plane_cnt++) {
+    vector<float> best_error;
+    float best_total_error;
+
+    for (int plane_cnt = 1; plane_cnt < max_plane; plane_cnt++) {
         int available_points_cnt = 0;
         for (int i = 0; i < total_points; i++) {
             if (mask[i] == 0) {
@@ -90,23 +111,73 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             }
         }
         
-        information[plane_cnt] = information[plane_cnt-1] + total_points * log((plane_cnt+1)/plane_cnt) + 3 * log(R/eps);
+        information[plane_cnt] = information[plane_cnt-1] + total_points * log((plane_cnt+1)/plane_cnt) + 3 * STATES;
 
+        best_total_error = 0;
+
+        std::random_device rd;  // Obtain a seed from the hardware
+        std::mt19937 gen(rd()); // Initialize a Mersenne Twister engine
+        std::uniform_int_distribution<> distrib(1, available_points_cnt); // Range from 1 to 100
+
+        auto start = chrono::high_resolution_clock::now();
         for (int trial=0; trial<ITERATION; trial++){
 
-            int index_a = rand() % available_points_cnt;
-            int index_b = rand() % available_points_cnt;
-            int index_c = rand() % available_points_cnt;
+            trial_total_error = 0;
+
+            int index_a = distrib(gen);
+            int index_b = distrib(gen);
+            int index_c = distrib(gen);
 
             if (index_a == index_b || index_a == index_c || index_b == index_c) {
                 continue;
             }
 
             trial_plane = get_plane(points[available_points[index_a]], points[available_points[index_b]], points[available_points[index_c]]);
+
+            for(int i=0; i<available_points_cnt;i++){
+                int j = available_points[i];
+                trial_error[j] = - trial_plane[3] / (trial_plane[0] * points[j][0] + trial_plane[1] * points[j][1] + trial_plane[2] * points[j][2] + 1e-10);
+                trial_error[j] = (trial_error[j] - points[j][2]) / sigma[j];
+                trial_error[j] = pow(trial_error[j], 2)/2 + log(sigma[j]) - log(eps) + 0.5 * log(2 * 3.14159) - STATES;
+
+                if (trial_error[j] < 0) {
+                    trial_total_error += trial_error[j];
+                }
+            }
+
+            if (trial_total_error < best_total_error) {
+                best_error = trial_error;
+                best_total_error = trial_total_error;
+                plane[plane_cnt] = trial_plane;
+            }
         }
 
-        plane[plane_cnt] = trial_plane;
+        information[plane_cnt] += best_total_error;
+        for (int i = 0; i < total_points; i++) {
+            if (mask[i] == 0 && best_error[i] < 0) {
+                mask[i] = plane_cnt;
+            }
+        }
+
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+        cout<<duration.count()<<endl;
+        cout<<best_total_error<<endl;
     }
 
-    return vector<vector<int> >();
+    for (int i = 0; i < max_plane; i++) {
+        cout<<information[i]<<endl;
+    }
+
+    vector<vector<int> > output(H, vector<int>(W, 0));
+    for (int i = 0; i < H; i++) {
+        for (int j = 0; j < W; j++) {
+            output[i][j] = mask[i*W + j];
+            if (output[i][j] == -1) {
+                output[i][j] = 0;
+            }
+        }
+    }
+
+    return output;
 }

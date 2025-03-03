@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
+#include <vector>
 #include "information_optimisation.h"
 
 int main(int argc, char** argv) {
@@ -17,18 +18,16 @@ int main(int argc, char** argv) {
     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
     cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
 
-    information_optimisation(depth, config, 10);
+    std::vector<std::vector<int> > plane = information_optimisation(depth, config, 10);
 
     int H = img.rows;
     int W = img.cols;
 
     for (int i = 0; i < H; i++) {
         for (int j = 0; j < W; j++) {
-            if (depth.at<unsigned short>(i, j) == 0) {
-                img.at<cv::Vec3b>(i, j)[0] = 0;
-                img.at<cv::Vec3b>(i, j)[1] = 0;
-                img.at<cv::Vec3b>(i, j)[2] = 0;
-            }
+            img.at<cv::Vec3b>(i, j)[0] = plane[i][j] * 10;
+            img.at<cv::Vec3b>(i, j)[1] = plane[i][j] * 10;
+            img.at<cv::Vec3b>(i, j)[2] = plane[i][j] * 10;
         }
     }
 
