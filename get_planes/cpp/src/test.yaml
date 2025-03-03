@@ -1,0 +1,7 @@
+img_path: "/scratchdata/nyu_plane/rgb/0.png"
+depth_path: "/scratchdata/nyu_plane/depth/0.png"
+camera_params:
+  fx: 518.8579
+  fy: 518.8579
+  cx: 325.5824
+  cy: 253.7362
