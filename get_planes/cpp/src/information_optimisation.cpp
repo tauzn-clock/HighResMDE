@@ -26,12 +26,13 @@ array<float,4> get_plane(array<float,3> a, array<float,3> b, array<float,3> c) {
     plane[0] = v1[1] * v2[2] - v1[2] * v2[1];
     plane[1] = v1[2] * v2[0] - v1[0] * v2[2];
     plane[2] = v1[0] * v2[1] - v1[1] * v2[0];
-    plane[3] = -plane[0] * a[0] - plane[1] * a[1] - plane[2] * a[2];
 
     float norm = sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]) + 1e-10;
     plane[0] /= norm;
     plane[1] /= norm;
     plane[2] /= norm;
+
+    plane[3] = -plane[0] * a[0] - plane[1] * a[1] - plane[2] * a[2];
 
     if (plane[2] < 0) {
         plane[0] = -plane[0];
@@ -112,8 +113,8 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
     for (int plane_cnt = 1; plane_cnt < max_plane; plane_cnt++) {
         auto start = chrono::high_resolution_clock::now();
-        
-        int available_points_cnt = 0;
+
+        available_points_cnt = 0;
         for (int i = 0; i < total_points; i++) {
             if (mask[i] == 0) {
                 available_points[available_points_cnt] = i;
@@ -145,7 +146,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             trial_plane = get_plane(points[available_points[index_a]], points[available_points[index_b]], points[available_points[index_c]]);
 
             for(const int& j : available_points) {
-                trial_error[j] = - trial_plane[3] / (trial_plane[0] * points[j][0] + trial_plane[1] * points[j][1] + trial_plane[2] * points[j][2] + 1e-10)*direction_vector[j][2];
+                trial_error[j] = - trial_plane[3] / (trial_plane[0] * direction_vector[j][0] + trial_plane[1] * direction_vector[j][1] + trial_plane[2] * direction_vector[j][2] + 1e-10)*direction_vector[j][2];
                 trial_error[j] = (trial_error[j] - points[j][2]) / sigma[j];
                 trial_error[j] = pow(trial_error[j], 2)/2 + log_sigma[j];
 
