@@ -99,7 +99,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
     vector<float> information(max_plane, 0);
     vector<array<float,4> > plane(max_plane);
-    vector<int> available_points(total_points, 0);
+    vector<int> available_points(H*W, 0);
     int available_points_cnt = 0;
 
     information[0] = total_points * STATES;
@@ -115,7 +115,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
         auto start = chrono::high_resolution_clock::now();
 
         available_points_cnt = 0;
-        for (int i = 0; i < total_points; i++) {
+        for (int i = 0; i < H*W; i++) {
             if (mask[i] == 0) {
                 available_points[available_points_cnt] = i;
                 available_points_cnt++;
