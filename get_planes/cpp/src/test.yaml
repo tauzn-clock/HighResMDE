@@ -5,3 +5,8 @@ camera_params:
   fy: 518.8579
   cx: 325.5824
   cy: 253.7362
+scale: 1000
+R: 10
+eps: 0.001
+conf: 0.99
+inlier_th: 0.02

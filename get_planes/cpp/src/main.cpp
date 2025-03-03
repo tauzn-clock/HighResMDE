@@ -1,9 +1,9 @@
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
+#include "information_optimisation.h"
 
 int main(int argc, char** argv) {
-
     std::cout << argv[1] << std::endl;
     
     YAML::Node config = YAML::LoadFile(argv[1]);
@@ -11,20 +11,13 @@ int main(int argc, char** argv) {
     std::string img_path = config["img_path"].as<std::string>();
     std::string depth_path = config["depth_path"].as<std::string>();
 
-    float fx = config["camera_params"]["fx"].as<float>();
-    float fy = config["camera_params"]["fy"].as<float>();
-    float cx = config["camera_params"]["cx"].as<float>();
-    float cy = config["camera_params"]["cy"].as<float>();
-
     std::cout << "img_path: " << img_path << std::endl;
     std::cout << "depth_path: " << depth_path << std::endl;
-    std::cout << "fx: " << fx << std::endl;
-    std::cout << "fy: " << fy << std::endl;
-    std::cout << "cx: " << cx << std::endl;
-    std::cout << "cy: " << cy << std::endl;
 
     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
     cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
+
+    information_optimisation(depth, config, 10);
 
     int H = img.rows;
     int W = img.cols;
