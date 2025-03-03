@@ -163,27 +163,34 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
         }
 
         information[plane_cnt] += best_total_error;
-        for (int i = 0; i < total_points; i++) {
-            if (mask[i] == 0 && best_error[i] < 0) {
-                mask[i] = plane_cnt;
+        for(const int& j : available_points) {
+            if (best_error[j] < 0) {
+                mask[j] = plane_cnt;
             }
         }
 
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
         cout<<duration.count()<<endl;
-        cout<<best_total_error<<endl;
     }
 
+    int min_information = 0;
     for (int i = 0; i < max_plane; i++) {
-        cout<<information[i]<<endl;
+        if (information[i] < information[min_information]) {
+            min_information = i;
+        }
     }
+
+    cout<<"Min Info: "<<min_information<<" "<<information[min_information]<<endl;
 
     vector<vector<int> > output(H, vector<int>(W, 0));
     for (int i = 0; i < H; i++) {
         for (int j = 0; j < W; j++) {
             output[i][j] = mask[i*W + j];
             if (output[i][j] == -1) {
+                output[i][j] = 0;
+            }
+            if (output[i][j] > min_information) {
                 output[i][j] = 0;
             }
         }

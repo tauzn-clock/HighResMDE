@@ -18,20 +18,20 @@ int main(int argc, char** argv) {
     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
     cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
 
-    std::vector<std::vector<int> > plane = information_optimisation(depth, config, 16);
+    std::vector<std::vector<int> > plane = information_optimisation(depth, config, 12);
 
     int H = img.rows;
     int W = img.cols;
 
     for (int i = 0; i < H; i++) {
         for (int j = 0; j < W; j++) {
-            img.at<cv::Vec3b>(i, j)[0] = plane[i][j] * 10;
-            img.at<cv::Vec3b>(i, j)[1] = plane[i][j] * 10;
-            img.at<cv::Vec3b>(i, j)[2] = plane[i][j] * 10;
+            depth.at<ushort>(i, j) = (int)plane[i][j];
         }
     }
 
-    cv::imwrite("new_img.png", img);
+    //Save depth as UINT16
+
+    cv::imwrite("/scratchdata/nyu_plane/new_gt_sigma_1_full/0.png", depth);
 
     return 0;
 }
