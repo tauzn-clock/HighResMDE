@@ -6,7 +6,7 @@ from metrics import plane_ordering
 from depth_to_pcd import depth_to_pcd
 
 ROOT = "/HighResMDE/get_planes/corner"
-NOISE_LEVEL = 2
+NOISE_LEVEL = 5
 
 H = 480
 W = 640
@@ -66,6 +66,7 @@ visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/corner_3.png")
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
 save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_corner.png")
 visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_corner.png")
+#visualise_mask(depth, mask, INTRINSICS)
 
 default_plane_ratio = []
 for i in range(8):
@@ -88,3 +89,4 @@ mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index
 
 save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_corner.png")
 visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_corner.png")
+#visualise_mask(depth, mask, INTRINSICS)
