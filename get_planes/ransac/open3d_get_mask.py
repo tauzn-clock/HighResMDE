@@ -24,9 +24,9 @@ R = 10
 EPSILON = 0.001
 CONFIDENCE = 0.99
 INLIER_THRESHOLD = 0.1
-MAX_PLANE = 16
+MAX_PLANE = 8
 
-for index in range(380,406):
+for index in range(0,406):
 
     depth = Image.open(os.path.join(FILE_DIR, "depth", f"{index}.png"))
     depth = np.array(depth) / 1000
@@ -39,7 +39,7 @@ for index in range(380,406):
 
     #save_mask(mask.reshape(H,W), f"{FILE_DIR}/open3d/{index}.png")
 
-    SIGMA = points, index = depth_to_pcd(depth, INTRINSICS)
+    SIGMA = points, _ = depth_to_pcd(depth, INTRINSICS)
     SIGMA = 0.01 * points[:,2]
 
 
@@ -53,7 +53,7 @@ for index in range(380,406):
     planes = planes[1:smallest+1]
     print(mask.max())
 
-    points, index = depth_to_pcd(depth, INTRINSICS)
+    points, _ = depth_to_pcd(depth, INTRINSICS)
     mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA)
     print(mask.max())   
     print(planes)
