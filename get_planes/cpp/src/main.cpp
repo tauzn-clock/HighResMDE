@@ -9,14 +9,32 @@ int main(int argc, char** argv) {
     
     YAML::Node config = YAML::LoadFile(argv[1]);
 
-    std::string img_path = config["img_path"].as<std::string>();
-    std::string depth_path = config["depth_path"].as<std::string>();
+    //std::string img_path = config["img_path"].as<std::string>();
+    //std::string depth_path = config["depth_path"].as<std::string>();
 
-    std::cout << "img_path: " << img_path << std::endl;
-    std::cout << "depth_path: " << depth_path << std::endl;
+    //std::cout << "img_path: " << img_path << std::endl;
+    //std::cout << "depth_path: " << depth_path << std::endl;
 
-    cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
-    cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
+    for(int i=0; i<1449; i++){
+        std::string depth_path = "/scratchdata/stair/depth/" + std::to_string(i) + ".png";
+        cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
+
+        std::vector<std::vector<int> > plane = information_optimisation(depth, config, 10);
+
+        int H = depth.rows;
+        int W = depth.cols;
+
+        for (int i = 0; i < H; i++) {
+            for (int j = 0; j < W; j++) {
+                depth.at<ushort>(i, j) = (int)plane[i][j];
+            }
+        }
+
+        cv::imwrite("/scratchdata/stair/our/"+std::to_string(i)+".png", depth);
+    }
+    /*
+    //cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
+    //cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
 
     std::vector<std::vector<int> > plane = information_optimisation(depth, config, 12);
 
@@ -28,10 +46,7 @@ int main(int argc, char** argv) {
             depth.at<ushort>(i, j) = (int)plane[i][j];
         }
     }
-
-    //Save depth as UINT16
-
-    cv::imwrite("/scratchdata/nyu_plane/new_gt_sigma_1_full/0.png", depth);
-
+    //cv::imwrite("/scratchdata/nyu_plane/new_gt_sigma_1_full/0.png", depth);
+    */
     return 0;
 }

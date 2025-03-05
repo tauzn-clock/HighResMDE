@@ -122,8 +122,15 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             }
         }
         available_points.resize(available_points_cnt);
+
+        if (available_points_cnt <=3){
+            for (int i=plane_cnt; i<max_plane; i++){
+                information[i] = information[i-1];
+            }
+            break;
+        }
         
-        information[plane_cnt] = information[plane_cnt-1] + total_points * log((plane_cnt+1)/plane_cnt) + 3 * STATES;
+        information[plane_cnt] = information[plane_cnt-1] + total_points * log((float)(plane_cnt+1)/plane_cnt) + 3 * STATES;
 
         best_total_error = 0;
 
