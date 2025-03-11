@@ -20,7 +20,7 @@ def depth_to_color(depth):
     return color
 
 DIR_FILE = "/scratchdata/alcove"
-N = 406 // 4
+N = 39
 
 with open(os.path.join(DIR_FILE, "camera_info.json"), "r") as f:
     camera_info = json.load(f)
@@ -36,7 +36,8 @@ INLIER_THRESHOLD = 0.1
 MAX_PLANE = 24
 
 CONVERT_DEPTH = False
-CREATE_OPEN3D = True
+CREATE_OPEN3D = False
+COLOR_OUR = False
 CREATE_COMBINED = True
 
 if CONVERT_DEPTH:
@@ -59,13 +60,24 @@ if CREATE_OPEN3D:
         depth = Image.open(os.path.join(DIR_FILE, "depth", f"{i}.png"))
         depth = np.array(depth) / 1000
 
-        plt.imsave("test.png", depth, cmap='gray')
-
         H, W = depth.shape
 
         mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True, zero_depth=True)
 
         save_mask(mask.reshape(H,W), f"{DIR_FILE}/open3d/{i}.png")
+
+if COLOR_OUR:
+    COLOR_OUR_PTH = os.path.join(DIR_FILE, "our_color")
+    if not os.path.exists(COLOR_OUR_PTH):
+        os.makedirs(COLOR_OUR_PTH)
+        print(f"Directory '{COLOR_OUR_PTH}' created.")
+    
+    for index in range(N):
+        mask = Image.open(f"{DIR_FILE}/our/{index}.png")
+        mask = np.array(mask)
+        H,W = mask.shape
+        print(mask.max(),mask.min())
+        save_mask(mask.reshape(H,W), f"{DIR_FILE}/our_color/{index}.png")
 
 if CREATE_COMBINED:
     COMBINED = os.path.join(DIR_FILE, "combined")
