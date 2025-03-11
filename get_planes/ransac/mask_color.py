@@ -5,7 +5,7 @@ import numpy as np
 
 DIR_PATH = "/scratchdata/corridor"
 
-for index in range(400):
+for index in range(800):
 
     mask = Image.open(f"{DIR_PATH}/our/{index}.png")
     mask = np.array(mask)
