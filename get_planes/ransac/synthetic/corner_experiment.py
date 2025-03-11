@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/HighResMDE/get_planes/ransac")
+
 import numpy as np
 from information_estimation import plane_ransac
 from visualise import visualise_mask, save_mask
@@ -59,14 +62,14 @@ mask = np.zeros_like(depth,dtype=bool)
 #visualise_mask(depth, mask, INTRINSICS)
 
 import matplotlib.pyplot as plt
-plt.imsave(f"{ROOT}/corner.png",depth,cmap='gray')
-visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/corner_gt.png",skip_color=True)
-visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/corner_3.png")
+#plt.imsave(f"{ROOT}/corner.png",depth,cmap='gray')
+#visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/corner_gt.png",skip_color=True)
+#visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/corner_3.png")
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_corner.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_corner.png")
-#visualise_mask(depth, mask, INTRINSICS)
+#save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_corner.png")
+#visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_corner.png")
+visualise_mask(depth, mask, INTRINSICS)
 
 default_plane_ratio = []
 for i in range(8):
@@ -87,6 +90,6 @@ print(mask.max())
 points, index = depth_to_pcd(depth, INTRINSICS)
 mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index=mask.max())
 
-save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_corner.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_corner.png")
-#visualise_mask(depth, mask, INTRINSICS)
+#save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_corner.png")
+#visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_corner.png")
+visualise_mask(depth, mask, INTRINSICS)

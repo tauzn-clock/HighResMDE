@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/HighResMDE/get_planes/ransac")
+
 import numpy as np
 from information_estimation import plane_ransac
 from visualise import visualise_mask, save_mask
@@ -57,14 +60,14 @@ depth = np.array(depth/EPSILON,dtype=int) * EPSILON
 print(depth.max(), depth.min())
 
 import matplotlib.pyplot as plt
-plt.imsave(f"{ROOT}/staircase.png",depth,cmap='gray')
-visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/stair_gt.png",skip_color=True)
-visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/stair_4.png")
+#plt.imsave(f"{ROOT}/staircase.png",depth,cmap='gray')
+#visualise_mask(depth, np.zeros(H*W,dtype=int), INTRINSICS, filepath=f"{ROOT}/stair_gt.png",skip_color=True)
+#visualise_mask(depth,gt, INTRINSICS, filepath=f"{ROOT}/stair_4.png")
 
 mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True)
-save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_stair.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_stair.png")
-#visualise_mask(depth, mask, INTRINSICS)
+#save_mask(mask, f"{ROOT}/{NOISE_LEVEL}_default_stair.png")
+#visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_default_pcd_stair.png")
+visualise_mask(depth, mask, INTRINSICS)
 
 R = depth.max() - depth.min()
 print(R)
@@ -80,6 +83,6 @@ print(mask.max())
 points, index = depth_to_pcd(depth, INTRINSICS)
 mask, planes = plane_ordering(points, mask, planes, R, EPSILON, SIGMA,keep_index=mask.max())
 
-save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_stair.png")
-visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_stair.png")
-#visualise_mask(depth, mask, INTRINSICS)
+#save_mask(mask.reshape(H,W), f"{ROOT}/{NOISE_LEVEL}_ours_stair.png")
+#visualise_mask(depth, mask, INTRINSICS, filepath=f"{ROOT}/{NOISE_LEVEL}_ours_pcd_stair.png")
+visualise_mask(depth, mask, INTRINSICS)
