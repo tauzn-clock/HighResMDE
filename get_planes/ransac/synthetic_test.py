@@ -40,6 +40,8 @@ def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, M
     print("Iteration: ", ITERATION)
 
     for i in range(MAX_PLANE):
+        if (len(points[final_mask.flatten()==0])<3):
+            break
         pcd.points = o3d.utility.Vector3dVector(points[final_mask.flatten()==0])
         plane_model, plane_inliers = pcd.segment_plane(SIGMA, 3, ITERATION)
         [a, b, c, d] = plane_model
