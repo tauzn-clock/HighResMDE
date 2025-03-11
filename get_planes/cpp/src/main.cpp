@@ -16,7 +16,8 @@ int main(int argc, char** argv) {
     //std::cout << "depth_path: " << depth_path << std::endl;
 
     for(int i=0; i<1449; i++){
-        std::string depth_path = "/scratchdata/stair/depth/" + std::to_string(i) + ".png";
+        std::string depth_path = config["file_path"].as<std::string>() + "/depth/" + std::to_string(i) + ".png";
+        std::cout << "depth_path: " << depth_path << std::endl;
         cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
 
         std::vector<std::vector<int> > plane = information_optimisation(depth, config, 10);
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        cv::imwrite("/scratchdata/stair/our/"+std::to_string(i)+".png", depth);
+        cv::imwrite(config["file_path"].as<std::string>() + "/our/" +std::to_string(i)+".png", depth);
     }
     /*
     //cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
