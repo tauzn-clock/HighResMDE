@@ -25,13 +25,14 @@ def set_depth(depth,intrinsic,mask,normal,distance):
 
     return distance*mask
 
-def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True):
+def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True, zero_depth=False):
     final_mask = np.zeros_like(depth,dtype=int)
     final_planes = []
 
     points, index = depth_to_pcd(depth, INTRINSICS)
 
-    #final_mask[depth == 0] = -1
+    if zero_depth:
+        final_mask[depth == 0] = -1
 
     pcd = o3d.geometry.PointCloud()
     
@@ -50,6 +51,7 @@ def open3d_find_planes(depth, INTRINSICS, SIGMA, CONFIDENCE, INLIER_THRESHOLD, M
         
         final_planes.append([a,b,c,d])
 
-    #final_mask[final_mask == -1] = 0
+    if zero_depth:
+        final_mask[final_mask == -1] = 0
 
     return final_mask, np.array(final_planes)
