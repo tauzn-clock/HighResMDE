@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
 from tqdm import tqdm
+import json
+
+from synthetic_test import open3d_find_planes
+from visualise import save_mask
 
 def depth_to_color(depth):
     depth = depth / depth.max()
@@ -17,7 +21,22 @@ def depth_to_color(depth):
 
 DIR_FILE = "/scratchdata/alcove"
 N = 406 // 4
-CONVERT_DEPTH = True
+
+with open(os.path.join(DIR_FILE, "camera_info.json"), "r") as f:
+    camera_info = json.load(f)
+
+INTRINSICS = camera_info["K"]
+print(INTRINSICS)
+
+NOISE_LEVEL = 10
+R = 10
+EPSILON = 0.001
+CONFIDENCE = 0.99
+INLIER_THRESHOLD = 0.1
+MAX_PLANE = 24
+
+CONVERT_DEPTH = False
+CREATE_OPEN3D = True
 CREATE_COMBINED = True
 
 if CONVERT_DEPTH:
@@ -30,6 +49,23 @@ if CONVERT_DEPTH:
         depth = np.array(depth)
         depth = depth_to_color(depth)
         plt.imsave(f"{DIR_FILE}/depth_color/{i}.png", depth)
+
+if CREATE_OPEN3D:
+    OPEN3D_PTH = os.path.join(DIR_FILE, "open3d")
+    if not os.path.exists(OPEN3D_PTH):
+        os.makedirs(OPEN3D_PTH)
+        print(f"Directory '{OPEN3D_PTH}' created.")
+    for i in range(N):
+        depth = Image.open(os.path.join(DIR_FILE, "depth", f"{i}.png"))
+        depth = np.array(depth) / 1000
+
+        plt.imsave("test.png", depth, cmap='gray')
+
+        H, W = depth.shape
+
+        mask, planes = open3d_find_planes(depth, INTRINSICS, EPSILON * NOISE_LEVEL, CONFIDENCE, INLIER_THRESHOLD, MAX_PLANE, verbose=True, zero_depth=True)
+
+        save_mask(mask.reshape(H,W), f"{DIR_FILE}/open3d/{i}.png")
 
 if CREATE_COMBINED:
     COMBINED = os.path.join(DIR_FILE, "combined")
