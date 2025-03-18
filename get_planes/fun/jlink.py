@@ -51,40 +51,43 @@ def get_jaccard(a, b):
     intersection = np.logical_and(a, b).sum()
     return intersection / union
 
-mask = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
+parent = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
 index = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
 
 for _ in range(len(pts)):
     best_jaccard = 0
-    index_a = -1
-    index_b = -1
+    best_a = -1
+    best_b = -1
+    best_index_a = -1
+    best_index_b = -1
 
-    for i in range(mss.shape[0]):
-        for j in range(i+1, mss.shape[0]):
-            jaccard = get_jaccard(mss[i,:], mss[j,:])
+    for idx_i, i in enumerate(index):
+        for idx_j in range(idx_i+1, len(index)):
+            j = index[idx_j]
+            jaccard = get_jaccard(mss[parent[i],:], mss[parent[j],:])
             if jaccard > best_jaccard:
                 best_jaccard = jaccard
-                index_a = i
-                index_b = j
+                best_a = i
+                best_b = j
+                best_index_a = idx_i
+                best_index_b = idx_j
+
     
     print(f'Best jaccard: {best_jaccard}')
     if best_jaccard < 0.01:
         break
     
-    mask[index[index_b]] = mask[index[index_a]]
-    mss[index_a, :] = np.logical_and(mss[index_a, :], mss[index_b, :])
-    mss = np.delete(mss, index_b, axis=0)
-    index = np.delete(index, index_b)
+    parent[best_b] = parent[best_a]
+    mss[parent[best_a], :] = np.logical_or(mss[parent[best_a], :], mss[parent[best_b], :])
+    index = np.delete(index, best_index_b)
     
+for i in range(parent.shape[0]):
+    cur = parent[i]
+    while parent[cur] != cur:
+        cur = parent[cur]
+    parent[i] = cur
 
-
-for i in range(mask.shape[0]):
-    cur = mask[i]
-    while mask[cur] != cur:
-        cur = mask[cur]
-    mask[i] = cur
-
-print(mask)
+print(parent)
 
 for i in range(mss.shape[0]):
     # Find best fit line for each mask
