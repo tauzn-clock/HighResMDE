@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+np.random.seed(42)
+
 SIGMA = 0.00
 PT_PER_LINE = 50
-MODELS = 2000
+MODELS = 8000
 THRESHOLD = 0.001
 
 pts = []
@@ -11,12 +13,12 @@ pts = []
 for i in range(5):
     for j in range(PT_PER_LINE):
         x = np.random.uniform(-0.5, 0.5)
-        y = np.random.randn() * SIGMA + 0.15
+        y = np.random.randn() * SIGMA + 0.16
         # Rotate by i * 2 * pi / 5
         x, y = x * np.cos(i * 2 * np.pi / 5) - y * np.sin(i * 2 * np.pi / 5), x * np.sin(i * 2 * np.pi / 5) + y * np.cos(i * 2 * np.pi / 5)
         pts.append((x, y))
 
-for _ in range(50):
+for _ in range(0):
     pts.append((np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5)))
 
 # Plot the points
@@ -78,7 +80,7 @@ for _ in range(len(pts)):
         break
     
     parent[best_b] = parent[best_a]
-    mss[parent[best_a], :] = np.logical_or(mss[parent[best_a], :], mss[parent[best_b], :])
+    mss[parent[best_a], :] = np.logical_and(mss[parent[best_a], :], mss[parent[best_b], :])
     index = np.delete(index, best_index_b)
     
 for i in range(parent.shape[0]):
@@ -87,12 +89,20 @@ for i in range(parent.shape[0]):
         cur = parent[cur]
     parent[i] = cur
 
-print(parent)
+# Visualise best fit lines
+features, counts = np.unique(parent, return_counts=True)
+features = features[np.argsort(counts)[::-1]]
+counts = counts[np.argsort(counts)[::-1]]
 
-for i in range(mss.shape[0]):
+print(features)
+print(counts)
+
+for i in range(len(features)):
+    if counts[i] < 10:
+        break
     # Find best fit line for each mask
-    x = pts[mask == index[i], 0]
-    y = pts[mask == index[i], 1]
+    x = pts[parent == features[i], 0]
+    y = pts[parent == features[i], 1]
     A = np.vstack([x, np.ones(len(x))]).T
     m, c = np.linalg.lstsq(A, y, rcond=None)[0]
     print(f'Line {i}: y = {m}x + {c}')
