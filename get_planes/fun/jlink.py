@@ -54,34 +54,34 @@ def get_jaccard(a, b):
     return intersection / union
 
 parent = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
-index = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
+index = np.linspace(0, len(pts)-1, len(pts), dtype=bool)
 
 for _ in range(len(pts)):
     best_jaccard = 0
     best_a = -1
     best_b = -1
-    best_index_a = -1
-    best_index_b = -1
 
     for idx_i, i in enumerate(index):
+        if not i:
+            continue
         for idx_j in range(idx_i+1, len(index)):
             j = index[idx_j]
-            jaccard = get_jaccard(mss[parent[i],:], mss[parent[j],:])
+            if not j:
+                continue
+            jaccard = get_jaccard(mss[parent[idx_i],:], mss[parent[idx_j],:])
             if jaccard > best_jaccard:
                 best_jaccard = jaccard
-                best_a = i
-                best_b = j
-                best_index_a = idx_i
-                best_index_b = idx_j
+                best_a = idx_i
+                best_b = idx_j
 
     
     print(f'Best jaccard: {best_jaccard}')
-    if best_jaccard < 0.01:
+    if best_jaccard < 0.5:
         break
     
     parent[best_b] = parent[best_a]
     mss[parent[best_a], :] = np.logical_and(mss[parent[best_a], :], mss[parent[best_b], :])
-    index = np.delete(index, best_index_b)
+    index[best_b] = False
     
 for i in range(parent.shape[0]):
     cur = parent[i]
