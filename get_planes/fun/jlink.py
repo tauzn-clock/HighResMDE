@@ -18,7 +18,7 @@ for i in range(5):
         x, y = x * np.cos(i * 2 * np.pi / 5) - y * np.sin(i * 2 * np.pi / 5), x * np.sin(i * 2 * np.pi / 5) + y * np.cos(i * 2 * np.pi / 5)
         pts.append((x, y))
 
-for _ in range(0):
+for _ in range(100):
     pts.append((np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5)))
 
 # Plot the points
@@ -54,7 +54,7 @@ def get_jaccard(a, b):
     return intersection / union
 
 parent = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
-index = np.linspace(0, len(pts)-1, len(pts), dtype=bool)
+index = np.ones(len(pts), dtype=bool)
 
 for _ in range(len(pts)):
     best_jaccard = 0
