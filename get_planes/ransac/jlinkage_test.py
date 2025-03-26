@@ -99,7 +99,7 @@ def get_jaccard(a, b):
 parent = np.linspace(0, len(pts)-1, len(pts), dtype=np.int32)
 index = np.ones(len(pts), dtype=bool)
 
-parent[pts[:, 2] <= 0] = 0
+parent[pts[:, 2] <= 0] = -1
 index[pts[:, 2] <= 0] = False
 
 adj = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -124,7 +124,7 @@ for itr in range(len(pts)):
                 continue
 
             idx_j = j_y * W + j_x
-            if pts[idx_j, 2] <= 0:
+            if parent[idx_j] == -1:
                 continue
             
             idx_j = parent[idx_j]
@@ -142,7 +142,7 @@ for itr in range(len(pts)):
 
     print(f'Best jaccard: {best_jaccard}', itr)
     print(best_a, best_b)
-    if best_jaccard < 0.0001:
+    if best_jaccard < 0.5:
         break
 
     parent[best_b] = parent[best_a]
@@ -158,9 +158,14 @@ for i in range(parent.shape[0]):
 #Find unique planes
 features, counts = np.unique(parent, return_counts=True)
 print(len(features))
+print(features, counts)
 
 test = parent.reshape((H, W))
 plt.imsave('jlink_mss.png', test, cmap='gray')
+new_mss = mss.copy()
+for i in range(len(parent)):
+    new_mss[i] = mss[parent[i], :]
+plt.imsave('mss_new.png', new_mss, cmap='gray')
 
 pcd = o3d.geometry.PointCloud()
 pcd.points = o3d.utility.Vector3dVector(pts)
