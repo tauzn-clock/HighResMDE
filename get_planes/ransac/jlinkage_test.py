@@ -8,8 +8,8 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 
 DIR_FILE = "/scratchdata/processed/alcove2"
-MODEL_CNT = 100000
-THRESHOLD = 0.1
+MODEL_CNT = 1000
+THRESHOLD = 0.001
 
 with open(os.path.join(DIR_FILE, "camera_info.json"), "r") as f:
     camera_info = json.load(f)
@@ -23,33 +23,73 @@ depth = Image.open(os.path.join(DIR_FILE, "depth", f"{INDEX}.png"))
 depth = np.array(depth)
 
 #Downsample
-depth = depth[::10, ::10]
-INTRINSICS[0] /= 2
-INTRINSICS[5] /= 2
-INTRINSICS[2] /= 2
-INTRINSICS[6] /= 2
+RESCALE = 20
+depth = depth[::RESCALE, ::RESCALE] / 1000
+INTRINSICS[0] /= RESCALE
+INTRINSICS[5] /= RESCALE
+INTRINSICS[2] /= RESCALE
+INTRINSICS[6] /= RESCALE
 
 H, W = depth.shape
 
 print(H, W)
 
+# Create dummy depth
+
+depth = np.zeros((H, W))
+depth[:H//2, :W//2] = 2
+depth[H//2:, :W//2] = 3
+depth[:H//2, W//2:] = 4
+depth[H//2:, W//2:] = 5
+
+print(depth.max())
+
+kernel = np.array([[1,2,4,2,1],
+                   [2,4,8,4,2],
+                   [4,8,0,8,4],
+                   [2,4,8,4,2],
+                   [1,2,4,2,1]])
+
+
+
 pts, _ = depth_to_pcd(depth, INTRINSICS)
-for_sampling = pts[pts[:, 2] > 0]
 
 mss = np.zeros((len(pts), MODEL_CNT), dtype=np.bool)
 
 for i in tqdm(range(MODEL_CNT)):
-    # Randomly select 3 points
-    p1, p2, p3 = np.random.choice(len(for_sampling), 3, replace=False)
-    # Calculate the plane
-    v1 = for_sampling[p2] - for_sampling[p1]
-    v2 = for_sampling[p3] - for_sampling[p1]
-    normal = np.cross(v1, v2)
-    normal = normal / np.linalg.norm(normal)
-    d = -np.dot(normal, pts[p1])
+
+    while True:
+        p1 = np.random.randint(0, len(pts))
+        p1_x = p1 % W
+        p1_y = p1 // W
+        
+        # Randomly select 2 points, centered around p1 with a kernel
+        p2 = np.random.choice(len(kernel.flatten()), 1, p=kernel.flatten()/kernel.sum())[0]
+        p2_x = p1_x + p2 % 5 - 2
+        p2_y = p1_y + p2 // 5 - 2
+        p2 = p2_y * W + p2_x
+
+        p3 = np.random.choice(len(kernel.flatten()), 1, p=kernel.flatten()/kernel.sum())[0]
+        p3_x = p1_x + p3 % 5 - 2
+        p3_y = p1_y + p3 // 5 - 2
+        p3 = p3_y * W + p3_x
+
+        if p2 >= 0 and p2 < H*W and p3 >= 0 and p3 < H*W:
+            if pts[p1, 2] > 0 and pts[p2, 2] > 0 and pts[p3, 2] > 0:
+                v1 = pts[p2] - pts[p1]
+                v2 = pts[p3] - pts[p1]
+                normal = np.cross(v1, v2)
+                if np.linalg.norm(normal) > 1e-10:
+                    normal = normal / (np.linalg.norm(normal)+1e-10)
+                    d = -np.dot(normal, pts[p1])
+                    break
 
     dist = np.abs(np.dot(pts, normal) + d)
     mss[:, i] = dist < THRESHOLD
+
+print(mss.shape)
+
+plt.imsave('mss.png', mss, cmap='gray')
 
 def get_jaccard(a, b):
     union = np.logical_or(a, b).sum()
@@ -101,6 +141,7 @@ for itr in range(len(pts)):
                 best_b = idx_j
 
     print(f'Best jaccard: {best_jaccard}', itr)
+    print(best_a, best_b)
     if best_jaccard < 0.0001:
         break
 
