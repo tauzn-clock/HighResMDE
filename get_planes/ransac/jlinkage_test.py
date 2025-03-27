@@ -35,7 +35,6 @@ H, W = depth.shape
 print(H, W)
 
 # Create dummy depth
-
 depth = np.zeros((H, W))
 depth[:H//2, :W//2] = 2
 depth[H//2:, :W//2] = 3
@@ -110,9 +109,6 @@ for itr in range(len(pts)):
     index_b = -1
 
     for idx_i, i in enumerate(index):
-        if not i:
-            continue
-
         i_x = idx_i % W 
         i_y = idx_i // W
 
@@ -127,6 +123,10 @@ for itr in range(len(pts)):
             if parent[idx_j] == -1:
                 continue
             
+            idx_i
+            while parent[idx_i] != idx_i:
+                idx_i = parent[idx_i]
+
             idx_j = parent[idx_j]
             while parent[idx_j] != idx_j:
                 idx_j = parent[idx_j]
@@ -142,7 +142,7 @@ for itr in range(len(pts)):
 
     print(f'Best jaccard: {best_jaccard}', itr)
     print(best_a, best_b)
-    if best_jaccard < 0.5:
+    if best_jaccard < 0.1:
         break
 
     parent[best_b] = parent[best_a]
@@ -165,6 +165,10 @@ plt.imsave('jlink_mss.png', test, cmap='gray')
 new_mss = mss.copy()
 for i in range(len(parent)):
     new_mss[i] = mss[parent[i], :]
+
+for i in range(len(features)):
+    for j in range(i+1, len(features)):
+        print(features[i],features[j],get_jaccard(new_mss[features[i]], new_mss[features[j]]))
 plt.imsave('mss_new.png', new_mss, cmap='gray')
 
 pcd = o3d.geometry.PointCloud()
