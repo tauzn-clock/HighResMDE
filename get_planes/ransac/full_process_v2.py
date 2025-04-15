@@ -23,7 +23,7 @@ with open(os.path.join(root, "camera_info.json"), "r") as f:
 INTRINSICS = camera_info["P"]
 print(INTRINSICS)
 
-TARGET_FOLDER = "new_gt_20240205"
+TARGET_FOLDER = "sam"
 
 EPSILON = 0.001 # Resolution
 R = 10.0 # Maximum Range
@@ -51,7 +51,7 @@ for frame_cnt in range(0,1000):
     img = np.array(img)
 
     depth = Image.open(os.path.join(root, f"depth/{frame_cnt}.png"))
-    depth = np.array(depth)/R
+    depth = np.array(depth) * EPSILON
     H, W = depth.shape
 
     points, index = depth_to_pcd(depth, INTRINSICS)
