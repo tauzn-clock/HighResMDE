@@ -38,7 +38,8 @@ MAX_PLANE = 24
 CONVERT_DEPTH = False
 CREATE_OPEN3D = False
 COLOR_OUR = False
-CREATE_COMBINED = True
+COLOR_SAM = True
+CREATE_COMBINED = False
 
 if CONVERT_DEPTH:
     DEPTH_COLOR = os.path.join(DIR_FILE, "depth_color")
@@ -78,6 +79,18 @@ if COLOR_OUR:
         H,W = mask.shape
         print(mask.max(),mask.min())
         save_mask(mask.reshape(H,W), f"{DIR_FILE}/our_color/{index}.png")
+
+if COLOR_SAM:
+    COLOR_SAM_PTH = os.path.join(DIR_FILE, "sam_color")
+    if not os.path.exists(COLOR_SAM_PTH):
+        os.makedirs(COLOR_SAM_PTH)
+        print(f"Directory '{COLOR_SAM_PTH}' created.")
+    for index in range(N):
+        mask = Image.open(f"{DIR_FILE}/sam/{index}.png")
+        mask = np.array(mask)
+        H,W = mask.shape
+        print(mask.max(),mask.min())
+        save_mask(mask.reshape(H,W), f"{DIR_FILE}/sam_color/{index}.png")
 
 if CREATE_COMBINED:
     COMBINED = os.path.join(DIR_FILE, "combined")
