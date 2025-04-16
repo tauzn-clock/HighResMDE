@@ -5,6 +5,6 @@
 #include <yaml-cpp/yaml.h>
 #include <vector>
 
-std::vector<std::vector<int> > information_optimisation(cv::Mat, YAML::Node, int);
+int information_optimisation(cv::Mat, YAML::Node, int, std::vector<int>&);
 
 #endif

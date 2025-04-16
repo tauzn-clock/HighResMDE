@@ -44,7 +44,7 @@ array<float,4> get_plane(array<float,3> a, array<float,3> b, array<float,3> c) {
     return plane;
 }
 
-vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, int max_plane) {
+int information_optimisation(cv::Mat depth, YAML::Node config, int max_plane, vector<int>& input_mask) {
 
     float fx = config["camera_params"]["fx"].as<float>();
     float fy = config["camera_params"]["fy"].as<float>();
@@ -64,6 +64,12 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
     int H = depth.rows;
     int W = depth.cols;
+
+    // Assert size of mask is H*W
+    if (input_mask.size() != (long unsigned int) H*W) {
+        cerr << "Mask size does not match depth size" << endl;
+        return {};
+    }
 
     vector<float> sigma(H*W);
     vector<float> log_sigma(H*W);
@@ -88,7 +94,7 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
             sigma[i*W + j] = 0.01 * depth.at<unsigned short>(i, j) / scale;
             log_sigma[i*W + j] = log(sigma[i*W + j]) - log(eps) + 0.5 * log(2 * 3.14159) - STATES;
 
-            if (depth.at<unsigned short>(i, j) == 0) {
+            if (depth.at<unsigned short>(i, j) == 0 || input_mask[i*W + j]==0) {
                 mask[i*W + j] = -1;
             }
             else{
@@ -190,18 +196,11 @@ vector<vector<int> > information_optimisation(cv::Mat depth, YAML::Node config, 
 
     cout<<"Min Info: "<<min_information<<" "<<information[min_information]<<endl;
 
-    vector<vector<int> > output(H, vector<int>(W, 0));
     for (int i = 0; i < H; i++) {
         for (int j = 0; j < W; j++) {
-            output[i][j] = mask[i*W + j];
-            if (output[i][j] == -1) {
-                output[i][j] = 0;
-            }
-            if (output[i][j] > min_information) {
-                output[i][j] = 0;
-            }
+            input_mask[i*W+j] = mask[i*W + j];
         }
     }
 
-    return output;
+    return min_information;
 }
