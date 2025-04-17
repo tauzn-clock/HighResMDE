@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
                 if (x_ >= 0 && x_ < seg_mask.rows && y_ >= 0 && y_ < seg_mask.cols){
                     if (edge.at<unsigned char>(x_,y_) != 255){
                         filled = true;
-                        new_seg_mask.at<int>(x,y) = new_seg_mask.at<int>(x_,y_);
+                        new_seg_mask.at<unsigned int>(x,y) = new_seg_mask.at<unsigned int>(x_,y_);
                         break;
                     }
                 }
@@ -94,8 +94,8 @@ int main(int argc, char** argv) {
 
     cv::Mat labelImg = visualisation(seg_mask, n_lables);
 
-    cv::Mat plane_mask = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
-    unsigned int plane_cnt = 0;
+    cv::Mat plane_mask = cv::Mat::zeros(depth.rows, depth.cols, CV_16UC1);
+    unsigned short plane_cnt = 0;
 
     for (int l = 1; l < n_lables; l++) {
         int cnt = 0;
@@ -118,24 +118,23 @@ int main(int argc, char** argv) {
         for (int i=0; i<plane_mask.rows; i++){
             for (int j=0; j<plane_mask.cols; j++){
                 if (mask[i*plane_mask.cols+j] > 0 && mask[i*plane_mask.cols+j] <= max_plane){
-                    plane_mask.at<unsigned char>(i,j) = (unsigned char) (plane_cnt + mask[i*plane_mask.cols+j]);
+                    plane_mask.at<unsigned short>(i,j) = (unsigned short) (plane_cnt + mask[i*plane_mask.cols+j]);
                 }
             }
         }
         
         plane_cnt += max_plane;
-        break;
     }
 
     unsigned int max = 0;
     unsigned int min = 10000;
     for (int i=0; i<plane_mask.rows; i++){
         for (int j=0; j<plane_mask.cols; j++){
-            if (plane_mask.at<unsigned char>(i,j) > max){
-                max = plane_mask.at<unsigned char>(i,j);
+            if (plane_mask.at<unsigned short>(i,j) > max){
+                max = plane_mask.at<unsigned short>(i,j);
             }
-            if (plane_mask.at<unsigned char>(i,j) < min){
-                min = plane_mask.at<unsigned char>(i,j);
+            if (plane_mask.at<unsigned short>(i,j) < min){
+                min = plane_mask.at<unsigned short>(i,j);
             }
         }
     }
@@ -144,11 +143,12 @@ int main(int argc, char** argv) {
     std::cout << "min: " << min << std::endl;
     std::cout << "plane_cnt: " << plane_cnt << std::endl;
 
-    //cv::Mat Img = visualisation(plane_mask, plane_cnt+1);
+    plane_mask.convertTo(plane_mask, CV_32SC1);
+    cv::Mat Img = visualisation(plane_mask, plane_cnt+1);
 
     cv::imshow("edge", edge);
     cv::imshow("labelImg", labelImg);
-    //cv::imshow("plane_mask", Img);
+    cv::imshow("plane_mask", Img);
     cv::waitKey(0);
 
     //std::cout << "img_path: " << img_path << std::endl;
