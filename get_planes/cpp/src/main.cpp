@@ -2,6 +2,7 @@
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 #include <vector>
+#include "visualisation.cpp"
 #include "information_optimisation.h"
 
 int main(int argc, char** argv) {
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
                 int x_ = x + index_array[j][0];
                 int y_ = y + index_array[j][1];
 
-                if (x_ >= 0 && x_ < edge.rows && y_ >= 0 && y_ < edge.cols){
+                if (x_ >= 0 && x_ < seg_mask.rows && y_ >= 0 && y_ < seg_mask.cols){
                     if (edge.at<unsigned char>(x_,y_) != 255){
                         filled = true;
                         new_seg_mask.at<int>(x,y) = new_seg_mask.at<int>(x_,y_);
@@ -83,7 +84,7 @@ int main(int argc, char** argv) {
             }
 
             if (not filled){
-                edge_index[new_edge_size] = edge_index[i];
+                edge_index[new_edge_size] = index;
                 new_edge_size++;
             }
         }
@@ -91,24 +92,63 @@ int main(int argc, char** argv) {
         seg_mask = new_seg_mask.clone();
     }
 
-    cv::Mat labelImg(seg_mask.size(), CV_8UC3);
-    std::vector<cv::Vec3b> colors(n_lables);
-    colors[0] = cv::Vec3b(0, 0, 0); // background
-    for (int i = 1; i < n_lables; ++i)
-        colors[i] = cv::Vec3b(rand() % 256, rand() % 256, rand() % 256);
+    cv::Mat labelImg = visualisation(seg_mask, n_lables);
 
-    for (int r = 0; r < seg_mask.rows; ++r) {
-        for (int c = 0; c < seg_mask.cols; ++c) {
-            int label = seg_mask.at<int>(r, c);
-            labelImg.at<cv::Vec3b>(r, c) = colors[label];
+    cv::Mat plane_mask = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
+    unsigned int plane_cnt = 0;
+
+    for (int l = 1; l < n_lables; l++) {
+        int cnt = 0;
+        std::vector<int> mask(depth.rows * depth.cols);
+        for (int i = 0; i < depth.rows; i++) {
+            for (int j = 0; j < depth.cols; j++) {
+                if (seg_mask.at<int>(i, j) == l) {
+                    mask[i * depth.cols + j] = 1;
+                    cnt++;
+                } 
+                else {
+                    mask[i * depth.cols + j] = 0;
+                }
+            }
+        }
+        std::cout<<cnt<<std::endl;
+
+        int max_plane = information_optimisation(depth, config, 8, mask);
+
+        for (int i=0; i<plane_mask.rows; i++){
+            for (int j=0; j<plane_mask.cols; j++){
+                if (mask[i*plane_mask.cols+j] > 0 && mask[i*plane_mask.cols+j] <= max_plane){
+                    plane_mask.at<unsigned char>(i,j) = (unsigned char) (plane_cnt + mask[i*plane_mask.cols+j]);
+                }
+            }
+        }
+        
+        plane_cnt += max_plane;
+        break;
+    }
+
+    unsigned int max = 0;
+    unsigned int min = 10000;
+    for (int i=0; i<plane_mask.rows; i++){
+        for (int j=0; j<plane_mask.cols; j++){
+            if (plane_mask.at<unsigned char>(i,j) > max){
+                max = plane_mask.at<unsigned char>(i,j);
+            }
+            if (plane_mask.at<unsigned char>(i,j) < min){
+                min = plane_mask.at<unsigned char>(i,j);
+            }
         }
     }
-    std::cout<<"Number of labels: " << n_lables << std::endl;
 
-    std::vector<std::vector<int> > plane = information_optimisation(depth, config, 10);
+    std::cout << "max: " << max << std::endl;
+    std::cout << "min: " << min << std::endl;
+    std::cout << "plane_cnt: " << plane_cnt << std::endl;
+
+    //cv::Mat Img = visualisation(plane_mask, plane_cnt+1);
 
     cv::imshow("edge", edge);
     cv::imshow("labelImg", labelImg);
+    //cv::imshow("plane_mask", Img);
     cv::waitKey(0);
 
     //std::cout << "img_path: " << img_path << std::endl;
@@ -133,22 +173,6 @@ int main(int argc, char** argv) {
 
         cv::imwrite(config["file_path"].as<std::string>() + "/our/" +std::to_string(i)+".png", depth);
     }
-    */
-    /*
-    //cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
-    //cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
-
-    std::vector<std::vector<int> > plane = information_optimisation(depth, config, 12);
-
-    int H = img.rows;
-    int W = img.cols;
-
-    for (int i = 0; i < H; i++) {
-        for (int j = 0; j < W; j++) {
-            depth.at<ushort>(i, j) = (int)plane[i][j];
-        }
-    }
-    //cv::imwrite("/scratchdata/nyu_plane/new_gt_sigma_1_full/0.png", depth);
     */
     return 0;
 }
