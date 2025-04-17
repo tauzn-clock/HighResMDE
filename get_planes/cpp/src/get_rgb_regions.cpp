@@ -28,6 +28,7 @@ int get_rgb_regions(cv::Mat img, YAML::Node config, cv::Mat& seg_mask) {
     }
 
     cv::Mat new_seg_mask = seg_mask.clone();
+    cv::Mat new_edge = edge.clone();
     int edge_size = edge_index.size();
     int new_edge_size;
 
@@ -58,7 +59,8 @@ int get_rgb_regions(cv::Mat img, YAML::Node config, cv::Mat& seg_mask) {
                 if (x_ >= 0 && x_ < seg_mask.rows && y_ >= 0 && y_ < seg_mask.cols){
                     if (edge.at<unsigned char>(x_,y_) != 255){
                         filled = true;
-                        new_seg_mask.at<unsigned int>(x,y) = new_seg_mask.at<unsigned int>(x_,y_);
+                        new_seg_mask.at<unsigned int>(x,y) = seg_mask.at<unsigned int>(x_,y_);
+                        new_edge.at<unsigned char>(x,y) = 0;
                         break;
                     }
                 }
@@ -71,6 +73,7 @@ int get_rgb_regions(cv::Mat img, YAML::Node config, cv::Mat& seg_mask) {
         }
         edge_size = new_edge_size;
         seg_mask = new_seg_mask.clone();
+        edge = new_edge.clone();
     }
 
     return n_labels;
