@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include "visualisation.cpp"
+#include "get_rgb_regions.cpp"
 #include "information_optimisation.h"
 
 int main(int argc, char** argv) {
@@ -21,83 +22,15 @@ int main(int argc, char** argv) {
     cv::Mat img = cv::imread(rgb_path, cv::IMREAD_COLOR);
     cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
 
-    //Grayscale, Blur , Canny
-    cv::Mat edge;
-    cv::cvtColor(img, edge, cv::COLOR_BGR2GRAY);
-    int kernel_size = config["edge_detection_params"]["guassian_blur"]["kernel_size"].as<int>();
-    float sigma = config["edge_detection_params"]["guassian_blur"]["sigma"].as<float>();
-    cv::GaussianBlur(edge, edge, cv::Size(kernel_size, kernel_size), sigma);
-    float low_threshold = config["edge_detection_params"]["canny"]["low_threshold"].as<float>();
-    float high_threshold = config["edge_detection_params"]["canny"]["high_threshold"].as<float>();
-    cv::Canny(edge, edge, low_threshold, high_threshold);
-
-    //Get mask
     cv::Mat seg_mask;
-    cv::bitwise_not(edge, seg_mask);
-    int n_lables = cv::connectedComponents(seg_mask, seg_mask, 4);
+    int n_labels = get_rgb_regions(img, config, seg_mask);
 
-    std::vector<std::array<int,2> > edge_index;
-    for(int i=0; i<edge.rows; i++){
-        for(int j=0; j<edge.cols; j++){
-            if(edge.at<unsigned char>(i,j) == 255){
-                std::array<int,2> index = {i,j};
-                edge_index.push_back(index);
-            }
-        }
-    }
-
-    cv::Mat new_seg_mask = seg_mask.clone();
-    int edge_size = edge_index.size();
-    int new_edge_size;
-
-    std::array< std::array<int,2>, 8> index_array = {
-        std::array<int,2>{-1,0},
-        std::array<int,2>{1,0},
-        std::array<int,2>{0,-1},
-        std::array<int,2>{0,1},
-        std::array<int,2>{-1,-1},
-        std::array<int,2>{-1,1},
-        std::array<int,2>{1,-1},
-        std::array<int,2>{1,1}
-    };
-
-    while (edge_size > 0){
-        std::cout << "edge_size: " << edge_size << std::endl;
-        new_edge_size = 0;
-        for (int i=0; i<edge_size; i++){
-            std::array<int,2> index = edge_index[i];
-            int x = index[0];
-            int y = index[1];
-
-            bool filled = false;
-            for (int j=0; j<8; j++){
-                int x_ = x + index_array[j][0];
-                int y_ = y + index_array[j][1];
-
-                if (x_ >= 0 && x_ < seg_mask.rows && y_ >= 0 && y_ < seg_mask.cols){
-                    if (edge.at<unsigned char>(x_,y_) != 255){
-                        filled = true;
-                        new_seg_mask.at<unsigned int>(x,y) = new_seg_mask.at<unsigned int>(x_,y_);
-                        break;
-                    }
-                }
-            }
-
-            if (not filled){
-                edge_index[new_edge_size] = index;
-                new_edge_size++;
-            }
-        }
-        edge_size = new_edge_size;
-        seg_mask = new_seg_mask.clone();
-    }
-
-    cv::Mat labelImg = visualisation(seg_mask, n_lables);
+    cv::Mat labelImg = visualisation(seg_mask, n_labels);
 
     cv::Mat plane_mask = cv::Mat::zeros(depth.rows, depth.cols, CV_16UC1);
     unsigned short plane_cnt = 0;
 
-    for (int l = 1; l < n_lables; l++) {
+    for (int l = 1; l < n_labels; l++) {
         int cnt = 0;
         std::vector<int> mask(depth.rows * depth.cols);
         for (int i = 0; i < depth.rows; i++) {
@@ -146,7 +79,6 @@ int main(int argc, char** argv) {
     plane_mask.convertTo(plane_mask, CV_32SC1);
     cv::Mat Img = visualisation(plane_mask, plane_cnt+1);
 
-    cv::imshow("edge", edge);
     cv::imshow("labelImg", labelImg);
     cv::imshow("plane_mask", Img);
     cv::waitKey(0);
